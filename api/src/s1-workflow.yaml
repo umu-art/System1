@@ -1,0 +1,37 @@
+openapi: 3.1.0
+
+info:
+  title: Workflow Api
+  description: Контракт сервиса s1-workflow.
+  version: 1.0.0
+
+paths:
+  /api/workflow/info:
+    get:
+      tags:
+        - workflow
+      operationId: getWorkflowInfo
+      summary: Узнать, какой сервис отвечает и в каком окружении
+      responses:
+        '200':
+          description: Сведения о сервисе
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ServiceInfoDto'
+
+  /api/workflow/validate:
+    post:
+      tags:
+        - workflow
+      operationId: validateScenario
+      summary: Проверить, что движок сможет исполнить сценарий
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './scenario.yaml#/components/schemas/Scenario'
+      responses:
+        '204':
+          description: Сценарий корректен

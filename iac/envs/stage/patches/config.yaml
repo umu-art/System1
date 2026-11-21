@@ -1,0 +1,6 @@
+- op: replace
+  path: /data/S1_ENV
+  value: stage
+- op: replace
+  path: /data/LOG_LEVEL
+  value: debug

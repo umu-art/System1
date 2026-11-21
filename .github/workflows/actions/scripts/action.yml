@@ -1,0 +1,67 @@
+name: "Test and build"
+description: "Run tests and build for the given runtime (python, go, node)"
+
+inputs:
+  script:
+    description: "Среда (python, go, node)"
+    required: true
+  module:
+    description: "Каталог раздела"
+    required: true
+  name:
+    description: "Имя сервиса (совпадает с именем образа и каталога сервиса в разделе)"
+    required: true
+  test-only:
+    description: "Только тесты, без сборки (true на PR)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies (Python)
+      if: inputs.script == 'python'
+      shell: bash
+      working-directory: ${{ inputs.module }}/${{ inputs.name }}
+      run: pip install -r requirements.txt pytest
+
+    - name: Test (Python)
+      if: inputs.script == 'python'
+      shell: bash
+      working-directory: ${{ inputs.module }}/${{ inputs.name }}
+      run: |
+        python -m compileall -q .
+        python -m pytest || [ $? -eq 5 ]
+
+    - name: Test (Go)
+      if: inputs.script == 'go'
+      shell: bash
+      working-directory: ${{ inputs.module }}
+      run: |
+        go vet ./...
+        go test ./...
+
+    - name: Build (Go)
+      if: inputs.script == 'go' && inputs.test-only != 'true'
+      shell: bash
+      working-directory: ${{ inputs.module }}
+      run: CGO_ENABLED=0 go build -o bin/${{ inputs.name }} ./${{ inputs.name }}
+
+    - name: Install dependencies (Node)
+      if: inputs.script == 'node'
+      shell: bash
+      working-directory: ${{ inputs.module }}
+      run: npm ci
+
+    - name: Test (Node)
+      if: inputs.script == 'node'
+      shell: bash
+      working-directory: ${{ inputs.module }}
+      run: |
+        npm run typecheck
+        npm test --if-present
+
+    - name: Build (Node)
+      if: inputs.script == 'node' && inputs.test-only != 'true'
+      shell: bash
+      working-directory: ${{ inputs.module }}
+      run: npm run build

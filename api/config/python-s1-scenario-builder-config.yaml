@@ -1,0 +1,18 @@
+sources: "s1-scenario-builder.yaml"
+target: python-s1-scenario-builder-api
+generatorName: python-fastapi
+
+additionalProperties:
+  packageName: 's1_scenario_builder_api'
+  projectName: 'python-s1-scenario-builder-api'
+  packageVersion: 1.0.0
+
+globalProperties:
+  apis: ''
+  models: ''
+  supportingFiles: ''
+
+  modelTests: false
+  apiTests: false
+  modelDocs: false
+  apiDocs: false

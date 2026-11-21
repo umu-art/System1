@@ -1,0 +1,21 @@
+sources: null
+target: ts-s1-ui-api
+generatorName: typescript-fetch
+
+additionalProperties:
+  npmName: s1-ui-api
+  npmVersion: 1.0.0
+  supportsES6: true
+  typescriptThreePlus: true
+  withInterfaces: true
+  enumPropertyNaming: UPPERCASE
+
+globalProperties:
+  models: ''
+  apis: ''
+  supportingFiles: ''
+
+  modelTests: false
+  apiTests: false
+  modelDocs: false
+  apiDocs: false

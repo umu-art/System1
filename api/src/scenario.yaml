@@ -1,0 +1,56 @@
+openapi: 3.1.0
+
+info:
+  title: Scenario
+  description: Формат сценария. Путей не содержит, подключается по $ref из контрактов сервисов.
+  version: 1.0.0
+
+components:
+  schemas:
+
+    Scenario:
+      type: object
+      description: Сценарий — набор шагов с переходами.
+      required:
+        - id
+        - version
+        - steps
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор сценария.
+        version:
+          type: integer
+          description: Версия сценария.
+          example: 1
+        steps:
+          type: array
+          description: Шаги сценария.
+          items:
+            $ref: '#/components/schemas/ScenarioStep'
+
+    ScenarioStep:
+      type: object
+      description: Шаг-конверт — тип шага и его параметры.
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          description: Идентификатор шага внутри сценария.
+          example: ask-name
+        type:
+          type: string
+          description: Тип шага.
+          example: message
+        params:
+          type: object
+          description: Параметры шага, состав зависит от типа.
+          additionalProperties: true
+        next:
+          type: array
+          description: Идентификаторы шагов, в которые можно перейти.
+          items:
+            type: string

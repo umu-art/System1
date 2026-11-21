@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: system1
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/umu-art/system1.git
+              revision: HEAD
+              pathParamPrefix: env
+              files:
+                - path: iac/envs/*/env.yaml
+          - git:
+              repoURL: https://github.com/umu-art/system1.git
+              revision: HEAD
+              pathParamPrefix: app
+              directories:
+                - path: iac/kubernetes/*
+  template:
+    metadata:
+      name: '{{ .app.path.basename }}-{{ .env.path.basename }}'
+      namespace: argocd
+      labels:
+        app.kubernetes.io/instance: 'system1-{{ .env.path.basename }}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      destination:
+        namespace: '{{ .namespace }}'
+        server: https://kubernetes.default.svc
+      source:
+        path: '{{ .app.path.path }}'
+        repoURL: https://github.com/umu-art/system1.git
+        targetRevision: '{{ .revision }}'
+        kustomize:
+          components:
+            - '../../envs/{{ .env.path.basename }}'
+          images:
+            - 'ghcr.io/umu-art/{{ .app.path.basename }}:{{ .tag }}'
+          patches:
+            - target:
+                kind: ExternalSecret
+                name: '{{ .app.path.basename }}'
+              patch: |-
+                - op: replace
+                  path: /spec/dataFrom/0/extract/key
+                  value: '{{ .namespace }}/{{ .app.path.basename }}'
+      project: system1
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true

@@ -1,0 +1,18 @@
+sources: "s1-metrics.yaml"
+target: python-s1-metrics-api
+generatorName: python-fastapi
+
+additionalProperties:
+  packageName: 's1_metrics_api'
+  projectName: 'python-s1-metrics-api'
+  packageVersion: 1.0.0
+
+globalProperties:
+  apis: ''
+  models: ''
+  supportingFiles: ''
+
+  modelTests: false
+  apiTests: false
+  modelDocs: false
+  apiDocs: false

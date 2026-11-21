@@ -1,0 +1,25 @@
+openapi: 3.1.0
+
+info:
+  title: Common Api
+  description: Схемы, общие для сервисов System1. Путей не содержит.
+  version: 1.0.0
+
+components:
+  schemas:
+
+    ServiceInfoDto:
+      type: object
+      description: Какой сервис отвечает и в каком окружении он запущен.
+      required:
+        - service
+        - env
+      properties:
+        service:
+          type: string
+          description: Имя сервиса.
+          example: s1-dialogs
+        env:
+          type: string
+          description: Окружение из переменной S1_ENV.
+          example: stage

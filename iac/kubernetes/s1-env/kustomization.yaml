@@ -1,0 +1,4 @@
+resources:
+  - config.yaml
+  - gateway.yaml
+  - pull-secret.yaml

@@ -1,0 +1,72 @@
+name: Build module
+
+on:
+  workflow_call:
+    inputs:
+      module:
+        description: "Каталог раздела в репозитории (modules/platform)"
+        type: string
+        required: true
+      name:
+        description: "Имя сервиса, образа, деплоймента и каталога в iac/kubernetes (s1-dialogs)"
+        type: string
+        required: true
+      script:
+        description: "Среда (python, go, node)"
+        type: string
+        required: true
+      env:
+        description: "Окружение из iac/envs (stage, prod)"
+        type: string
+        required: true
+      test-only:
+        description: "Только тесты, без сборки образа и деплоя (true на PR)"
+        type: string
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changes
+        id: filter
+        if: inputs.env != 'prod'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            changed:
+              - '${{ inputs.module }}/**'
+              - 'api/**'
+              - 'iac/images/${{ inputs.name }}/**'
+
+      - name: Prepare environment
+        if: inputs.env == 'prod' || steps.filter.outputs.changed == 'true'
+        uses: ./.github/workflows/actions/prepare_env
+
+      - name: Run tests and build
+        if: inputs.env == 'prod' || steps.filter.outputs.changed == 'true'
+        uses: ./.github/workflows/actions/scripts
+        with:
+          script: ${{ inputs.script }}
+          module: ${{ inputs.module }}
+          name: ${{ inputs.name }}
+          test-only: ${{ inputs.test-only }}
+
+      - name: Build Docker image
+        if: (inputs.env == 'prod' || steps.filter.outputs.changed == 'true') && inputs.test-only != 'true'
+        uses: ./.github/workflows/actions/build_image
+        with:
+          image: ${{ inputs.name }}
+          actor: umu-art
+          token: ${{ secrets.PACKAGES_TOKEN }}
+
+      - name: Deploy to stand
+        if: (inputs.env == 'prod' || steps.filter.outputs.changed == 'true') && inputs.test-only != 'true'
+        uses: ./.github/workflows/actions/deploy_to_stand
+        with:
+          kubesecret: ${{ secrets.KUBESECRET }}
+          module-name: ${{ inputs.name }}
+          env: ${{ inputs.env }}

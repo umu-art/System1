@@ -1,0 +1,64 @@
+name: Assembling this whole mess
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - module: modules/platform
+            name: s1-dialogs
+            script: go
+
+          - module: modules/scenario
+            name: s1-workflow
+            script: go
+
+          - module: modules/copilot
+            name: s1-scenario-builder
+            script: python
+
+          - module: modules/analytics
+            name: s1-metrics
+            script: python
+
+          - module: modules/ui
+            name: s1-ui
+            script: node
+
+    uses: ./.github/workflows/_build-module.yml
+    with:
+      module: ${{ matrix.module }}
+      name: ${{ matrix.name }}
+      script: ${{ matrix.script }}
+      env: ${{ startsWith(github.ref, 'refs/tags/v') && 'prod' || 'stage' }}
+      test-only: ${{ github.event_name != 'push' }}
+    secrets: inherit
+
+  sync-iac:
+    name: Sync IaC (ArgoCD)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sync
+        uses: ./.github/workflows/actions/argo_sync
+        with:
+          argocd-server: ${{ secrets.ARGOCD_SERVER }}
+          argocd-token: ${{ secrets.ARGOCD_TOKEN }}
+          instance: system1-${{ startsWith(github.ref, 'refs/tags/v') && 'prod' || 'stage' }}

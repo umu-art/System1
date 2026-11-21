@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: s1-dialogs
+  labels:
+    app: s1-dialogs
+spec:
+  selector:
+    app: s1-dialogs
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP

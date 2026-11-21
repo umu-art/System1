@@ -1,0 +1,9 @@
+- op: replace
+  path: /metadata/name
+  value: system1-stage-gateway
+- op: replace
+  path: /spec/listeners/0/hostname
+  value: s1-stage.kazenin.ru
+- op: replace
+  path: /spec/listeners/0/tls/certificateRefs/0/name
+  value: system1-stage-gateway-tls

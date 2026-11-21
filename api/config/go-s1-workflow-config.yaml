@@ -1,0 +1,20 @@
+sources: "s1-workflow.yaml"
+target: s1-workflow-api
+generatorName: go-echo-server
+templateDir: config/go-echo-server-templates
+
+additionalProperties:
+  serverPort: '80'
+  packageName: 's1_workflow_api'
+
+globalProperties:
+  apis: ''
+  models: ''
+  supportingFiles:
+    - go.mod
+    - main.go
+
+  modelTests: false
+  apiTests: false
+  modelDocs: false
+  apiDocs: false

@@ -1,0 +1,34 @@
+name: "ArgoCD Sync"
+description: "Sync ArgoCD applications and wait for healthy status"
+
+inputs:
+  argocd-server:
+    description: "ArgoCD url"
+    required: true
+  argocd-token:
+    description: "Токен ArgoCD"
+    required: true
+  instance:
+    description: "Метка app.kubernetes.io/instance (system1-stage, system1-prod)"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Sync ArgoCD applications
+      uses: clowdhaus/argo-cd-action/@main
+      with:
+        version: 3.1.5
+        options: --server ${{ inputs.argocd-server }} --grpc-web --auth-token ${{ inputs.argocd-token }}
+        command: app sync -l app.kubernetes.io/instance=${{ inputs.instance }} --prune --timeout 600
+
+    - name: Sleep for 10 seconds
+      shell: bash
+      run: sleep 10
+
+    - name: Wait for ArgoCD health
+      uses: clowdhaus/argo-cd-action/@main
+      with:
+        version: 3.1.5
+        options: --server ${{ inputs.argocd-server }} --grpc-web --auth-token ${{ inputs.argocd-token }}
+        command: app wait -l app.kubernetes.io/instance=${{ inputs.instance }} --health --timeout 600

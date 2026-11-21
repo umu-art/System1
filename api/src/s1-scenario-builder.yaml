@@ -1,0 +1,21 @@
+openapi: 3.1.0
+
+info:
+  title: ScenarioBuilder Api
+  description: Контракт сервиса s1-scenario-builder.
+  version: 1.0.0
+
+paths:
+  /api/scenario-builder/info:
+    get:
+      tags:
+        - scenarioBuilder
+      operationId: getScenarioBuilderInfo
+      summary: Узнать, какой сервис отвечает и в каком окружении
+      responses:
+        '200':
+          description: Сведения о сервисе
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ServiceInfoDto'

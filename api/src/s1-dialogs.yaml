@@ -1,0 +1,21 @@
+openapi: 3.1.0
+
+info:
+  title: Dialogs Api
+  description: Контракт сервиса s1-dialogs.
+  version: 1.0.0
+
+paths:
+  /api/dialogs/info:
+    get:
+      tags:
+        - dialogs
+      operationId: getDialogsInfo
+      summary: Узнать, какой сервис отвечает и в каком окружении
+      responses:
+        '200':
+          description: Сведения о сервисе
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ServiceInfoDto'
