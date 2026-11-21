@@ -4,3 +4,8 @@ labels:
   - pairs:
       s1/env: prod
     includeTemplates: true
+patches:
+  - target:
+      kind: Gateway
+      name: system1-gateway
+    path: patches/gateway.yaml
