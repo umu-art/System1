@@ -58,6 +58,16 @@ func TestDriveUsesGoogleRefreshToken(t *testing.T) {
 	}
 }
 
+func TestMTSBootstrapIncludesCollectorLease(t *testing.T) {
+	resources := bootstrapResources(mtsSecret, map[string][]byte{"refresh": []byte("fixture-cookie")})
+	if len(resources) != 2 || resources[0].Kind != "Lease" || resources[0].APIVersion != "coordination.k8s.io/v1" || resources[0].Metadata["name"] != collectorName || resources[0].Metadata["namespace"] != prodNamespace {
+		t.Fatal("MTS bootstrap must create the collector Lease in production before installing the Secret")
+	}
+	if resources[1].Kind != "Secret" || resources[1].Metadata["name"] != mtsSecret || string(resources[1].Data["refresh"]) != "fixture-cookie" {
+		t.Fatal("MTS bootstrap must preserve the Secret payload")
+	}
+}
+
 func TestMTSListRefreshAndPagination(t *testing.T) {
 	ctx := context.Background()
 	var saved atomic.Bool

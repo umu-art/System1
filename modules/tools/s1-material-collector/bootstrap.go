@@ -26,14 +26,33 @@ var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 func validID(id string) bool { return idPattern.MatchString(id) }
 
+type bootstrapResource struct {
+	APIVersion string            `json:"apiVersion"`
+	Kind       string            `json:"kind"`
+	Metadata   map[string]string `json:"metadata"`
+	Data       map[string][]byte `json:"data,omitempty"`
+}
+
+func bootstrapResources(name string, data map[string][]byte) []bootstrapResource {
+	var resources []bootstrapResource
+	if name == mtsSecret {
+		resources = append(resources, bootstrapResource{
+			APIVersion: "coordination.k8s.io/v1", Kind: "Lease",
+			Metadata: map[string]string{"name": collectorName, "namespace": prodNamespace},
+		})
+	}
+	return append(resources, bootstrapResource{
+		APIVersion: "v1", Kind: "Secret",
+		Metadata: map[string]string{"name": name, "namespace": prodNamespace}, Data: data,
+	})
+}
+
 func installSecret(ctx context.Context, kubeContext, name string, data map[string][]byte) error {
-	secrets := struct {
-		APIVersion string            `json:"apiVersion"`
-		Kind       string            `json:"kind"`
-		Metadata   map[string]string `json:"metadata"`
-		Data       map[string][]byte `json:"data"`
-	}{"v1", "Secret", map[string]string{"name": name, "namespace": prodNamespace}, data}
-	input, err := json.Marshal(secrets)
+	input, err := json.Marshal(struct {
+		APIVersion string              `json:"apiVersion"`
+		Kind       string              `json:"kind"`
+		Items      []bootstrapResource `json:"items"`
+	}{"v1", "List", bootstrapResources(name, data)})
 	if err != nil {
 		return err
 	}
@@ -41,7 +60,7 @@ func installSecret(ctx context.Context, kubeContext, name string, data map[strin
 		"--server-side", "--field-manager="+collectorName+"-bootstrap", "--force-conflicts", "-f", "-")
 	cmd.Stdin = bytes.NewReader(input)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("kubectl could not install Secret %s: %w", name, err)
+		return fmt.Errorf("kubectl could not apply bootstrap resources for %s: %w", name, err)
 	}
 	slog.Info("installed collector Secret", "name", name, "namespace", prodNamespace)
 	return nil

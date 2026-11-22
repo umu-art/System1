@@ -46,10 +46,3 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: s1-material-collector
----
-apiVersion: coordination.k8s.io/v1
-kind: Lease
-metadata:
-  name: s1-material-collector
-  annotations:
-    argocd.argoproj.io/sync-options: ServerSideApply=true
