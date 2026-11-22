@@ -1,0 +1,51 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: s1-material-collector
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: s1-material-collector
+      rules:
+        - record: s1_material_collector:last_success_time_seconds
+          expr: |
+            max by (namespace) (
+              kube_job_status_completion_time{job_name=~"s1-material-collector-.+"}
+              or kube_cronjob_status_last_successful_time{cronjob="s1-material-collector"}
+            )
+        - record: s1_material_collector:last_failed_job_creation_time_seconds
+          expr: |
+            max by (namespace) (
+              kube_job_created{job_name=~"s1-material-collector-.+"}
+              and on (namespace, job_name)
+              kube_job_failed{job_name=~"s1-material-collector-.+",condition="true"} == 1
+            )
+        - alert: S1MaterialCollectorJobFailed
+          expr: |
+            s1_material_collector:last_failed_job_creation_time_seconds
+            > on (namespace) (
+              s1_material_collector:last_success_time_seconds
+              or on (namespace) s1_material_collector:last_failed_job_creation_time_seconds * 0
+            )
+          labels:
+            severity: critical
+            service: s1-material-collector
+          annotations:
+            summary: "Сбой выгрузки расшифровок МТС Линк"
+            description: >-
+              Откройте логи последней Job s1-material-collector в namespace {{ $labels.namespace }}.
+              При MTS_LINK_AUTH обновите cookies МТС Линк. При GOOGLE_DRIVE_AUTH повторите подключение папки Google Drive.
+        - alert: S1MaterialCollectorNoSuccessfulRun
+          expr: |
+            time() - (
+              s1_material_collector:last_success_time_seconds
+              or on (namespace) max by (namespace) (kube_cronjob_created{cronjob="s1-material-collector"})
+            ) > 7200
+            and on (namespace) kube_cronjob_spec_suspend{cronjob="s1-material-collector"} == 0
+          labels:
+            severity: critical
+            service: s1-material-collector
+          annotations:
+            summary: "Расшифровки МТС Линк не проверялись более двух часов"
+            description: "Проверьте состояние CronJob s1-material-collector и события её последних Job."

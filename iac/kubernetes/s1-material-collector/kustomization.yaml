@@ -1,0 +1,4 @@
+resources:
+  - cronjob.yaml
+  - access.yaml
+  - alerts.yaml

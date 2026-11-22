@@ -26,6 +26,12 @@ jobs:
             name: s1-workflow
             script: go
 
+          - module: modules/tools
+            name: s1-material-collector
+            script: go
+            cronjob: true
+            prod-only: true
+
           - module: modules/copilot
             name: s1-scenario-builder
             script: python
@@ -44,7 +50,8 @@ jobs:
       name: ${{ matrix.name }}
       script: ${{ matrix.script }}
       env: ${{ startsWith(github.ref, 'refs/tags/v') && 'prod' || 'stage' }}
-      test-only: ${{ github.event_name != 'push' }}
+      test-only: ${{ (github.event_name != 'push' || (matrix.prod-only && !startsWith(github.ref, 'refs/tags/v'))) && 'true' || 'false' }}
+      skip-rollout: ${{ matrix.cronjob == true }}
     secrets: inherit
 
   sync-iac:
