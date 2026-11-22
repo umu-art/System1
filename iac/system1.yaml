@@ -10,18 +10,27 @@ spec:
   generators:
     - matrix:
         generators:
-          - git:
-              repoURL: https://github.com/umu-art/system1.git
-              revision: HEAD
-              pathParamPrefix: env
-              files:
-                - path: iac/envs/*/env.yaml
-          - git:
-              repoURL: https://github.com/umu-art/system1.git
-              revision: HEAD
-              pathParamPrefix: app
-              directories:
-                - path: iac/kubernetes/*
+          - matrix:
+              generators:
+                - git:
+                    repoURL: https://github.com/umu-art/system1.git
+                    revision: HEAD
+                    pathParamPrefix: env
+                    files:
+                      - path: iac/envs/*/env.yaml
+                - git:
+                    repoURL: https://github.com/umu-art/system1.git
+                    revision: HEAD
+                    pathParamPrefix: app
+                    directories:
+                      - path: iac/kubernetes/*
+          - list:
+              elementsYaml: |
+                {{- if has .app.path.basename (get . "excludedApplications" | default (list)) -}}
+                {{ list | toJson }}
+                {{- else -}}
+                {{ list (dict) | toJson }}
+                {{- end -}}
   template:
     metadata:
       name: '{{ .app.path.basename }}-{{ .env.path.basename }}'
