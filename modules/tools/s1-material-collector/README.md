@@ -21,7 +21,7 @@ go build -o bin/s1-material-collector ./s1-material-collector
   --http-file s1-material-collector/a.http
 ```
 
-Для Google Drive включите **Google Drive API** и **Google Picker API** в одном проекте Google Cloud. Создайте OAuth-клиент типа **Desktop app** и ключ API для Picker. Для аккаунта вне организации OAuth-приложение должно работать в режиме **Production**. В режиме **Testing** refresh token для Drive действует семь дней.
+Для Google Drive включите **Google Drive API** и **Google Picker API** в одном проекте Google Cloud. Создайте OAuth-клиент типа **Desktop app** и ключ API для Picker. Для одного Google-аккаунта используйте [Personal mode](https://console.cloud.google.com/auth/overview/personal). У внешнего приложения в режиме **Testing** refresh token для Drive действует семь дней.
 
 ```sh
 ./bin/s1-material-collector configure-drive \
