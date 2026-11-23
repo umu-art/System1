@@ -1,0 +1,18 @@
+{
+  "group": "channels",
+  "order": 1,
+  "owner": "petr",
+  "status": "ok",
+  "ru": "Канал",
+  "en": "channel",
+  "zh": "渠道",
+  "def": {
+    "zh": "某个服务在 Telegram、MAX、WhatsApp 等平台上的一个具体 bot，连同它的 token。属于某个服务。",
+    "ru": "Конкретный бот сервиса в Telegram, MAX, WhatsApp и т. д. вместе с его токеном. Принадлежит сервису."
+  },
+  "ex": {
+    "zh": "",
+    "ru": ""
+  },
+  "conflicts": []
+}

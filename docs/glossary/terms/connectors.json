@@ -1,0 +1,18 @@
+{
+  "group": "services",
+  "order": 12,
+  "owner": "sasha",
+  "status": "ok",
+  "ru": "Коннекторы",
+  "en": "connectors",
+  "zh": "连接器",
+  "def": {
+    "zh": "外部服务的适配器：视频和配音生成、语音识别、Google Docs。",
+    "ru": "Адаптеры внешних сервисов: генерация видео и озвучки, распознавание речи, Google Docs."
+  },
+  "ex": {
+    "zh": "",
+    "ru": ""
+  },
+  "conflicts": []
+}

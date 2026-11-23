@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System1 术语表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column; each term is a row — names and selectors on the left, meaning and conflicts on the right. */
+:root {
+  --bg: #f5f6f8; --surface: #ffffff; --fg: #1b1e24; --muted: #5d6470; --faint: #8b929d; --line: #dde1e7;
+  --accent: #b03063; --accent-soft: #fbe9f0;
+  --ok: #2e7d4f; --ok-soft: #e4f3ea; --prop: #2f5fa8; --prop-soft: #e6eefa; --warn: #9a5b00; --warn-soft: #fbf0dc;
+  --danger: #b42318; --danger-soft: #fdecea;
+  --sans: "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #121418; --surface: #1a1d23; --fg: #e6e8ec; --muted: #9aa2ae; --faint: #6f7783; --line: #2c313a;
+  --accent: #f07aa8; --accent-soft: #3a1f2b;
+  --ok: #6fcf97; --ok-soft: #1c3226; --prop: #8db4f0; --prop-soft: #1d2a40; --warn: #f0b860; --warn-soft: #3a2c14;
+  --danger: #f28b82; --danger-soft: #3b1d1b;
+  color-scheme: dark;
+} }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.6; }
+.page { max-width: 1260px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 64px max(16px, env(safe-area-inset-left, 0px)); }
+h1 { margin: 0 0 16px; font-size: clamp(26px, 4vw, 34px); font-weight: 600; line-height: 1.15; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+input, select, textarea, button { font: inherit; color: var(--fg); }
+.search { flex: 1 1 200px; min-width: 0; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+select { font-size: 13px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); max-width: 100%; }
+.btn { font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--faint); }
+.btn.pri { background: var(--accent-soft); color: var(--accent); border-color: transparent; font-weight: 500; }
+.btn.danger { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+.btn.sm { font-size: 12px; padding: 2px 8px; border-radius: 6px; }
+.btn.link { border: 0; background: transparent; color: var(--muted); padding: 2px 4px; }
+.btn.link:hover { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font-size: 13px; padding: 6px 12px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.menuwrap { position: relative; display: inline-flex; }
+.menu { position: absolute; left: 0; top: calc(100% + 4px); z-index: 10; min-width: 100%; display: grid; gap: 2px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, .12); }
+.menu button { font-size: 13px; text-align: left; white-space: nowrap; padding: 6px 10px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.menu button:hover, .menu button:focus-visible { background: var(--accent-soft); color: var(--accent); }
+.newform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; padding: 10px; border: 1px dashed var(--faint); border-radius: 10px; }
+.newform input { flex: 1 1 180px; min-width: 0; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+.newform .err { flex-basis: 100%; font-size: 13px; color: var(--danger); }
+.banner { margin-top: 10px; font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); }
+.banner code { color: var(--fg); }
+.layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 32px; margin-top: 24px; align-items: start; }
+.layout.nonav { grid-template-columns: minmax(0, 1fr); }
+.nav { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; min-width: 0; }
+.navh { font-size: 12px; font-family: var(--mono); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; padding: 0 10px 8px; border-bottom: 1px solid var(--line); }
+.navlist { display: grid; gap: 2px; padding-top: 6px; }
+.nrow { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.nitem { flex: 1 1 auto; min-width: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 5px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; text-align: left; }
+.nitem:hover { background: var(--surface); color: var(--fg); }
+.nitem[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.nitem .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nitem .nm.ph { font-family: var(--mono); font-size: 13px; }
+.cnt { font-family: var(--mono); font-size: 12px; color: var(--faint); flex: none; }
+.nitem[aria-pressed="true"] .cnt { color: var(--accent); }
+.ntool { visibility: hidden; flex: none; border: 0; background: transparent; color: var(--faint); cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 6px; line-height: 1.2; }
+.ntool:hover { color: var(--accent); background: var(--surface); }
+.nrow:hover .ntool, .nrow:focus-within .ntool, .nrow.on .ntool { visibility: visible; }
+.nrow input { flex: 1 1 auto; min-width: 0; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--accent); background: var(--surface); font-size: 14px; }
+.nnote { font-size: 12px; line-height: 1.45; padding: 2px 10px 8px; color: var(--danger); display: grid; gap: 6px; }
+.nnote div { display: flex; gap: 6px; flex-wrap: wrap; }
+.nadd { margin: 8px 0 0 6px; }
+.nform { display: grid; gap: 6px; margin-top: 8px; padding: 0 2px; }
+.nform input { min-width: 0; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-size: 13px; }
+.nform .nbtns { display: flex; gap: 6px; }
+.nform .err { font-size: 12px; color: var(--danger); }
+section { margin-bottom: 32px; }
+h2 { font-size: 12px; font-family: var(--mono); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.term { display: grid; grid-template-columns: minmax(0, 250px) minmax(0, 1fr); gap: 8px 28px; padding: 16px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 16px; }
+.term:target { background: var(--accent-soft); box-shadow: -12px 0 0 var(--accent-soft), 12px 0 0 var(--accent-soft); }
+.names { display: grid; gap: 2px; align-content: start; min-width: 0; }
+.n1 { font-size: 19px; font-weight: 600; line-height: 1.3; }
+.n1row { display: flex; gap: 6px; align-items: baseline; }
+.n1row a { font-family: var(--mono); font-size: 13px; color: var(--faint); text-decoration: none; }
+.n1row a:hover { color: var(--accent); }
+.n2 { font-family: var(--mono); font-size: 13px; color: var(--accent); word-break: break-word; }
+.n3 { font-size: 14px; color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+.meta select { font-size: 12px; padding: 3px 6px; }
+.meta select.st-ok { color: var(--ok); background: var(--ok-soft); }
+.meta select.st-prop { color: var(--prop); background: var(--prop-soft); }
+.meta select.st-warn { color: var(--warn); background: var(--warn-soft); }
+.owner { display: inline-flex; align-items: center; gap: 4px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.body { min-width: 0; display: grid; gap: 8px; align-content: start; }
+.body p { margin: 0; max-width: 70ch; }
+.ex { font-size: 14px; color: var(--muted); }
+.ex b { font-weight: 500; color: var(--fg); }
+.ed { border-radius: 4px; padding: 1px 3px; margin: -1px -3px; border: 1px dashed transparent; cursor: text; white-space: pre-line; }
+.ed:hover { border-color: var(--faint); background: var(--surface); }
+.ed input, .ed textarea { width: 100%; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--accent); background: var(--surface); font-size: inherit; font-weight: inherit; font-family: inherit; line-height: 1.5; white-space: normal; }
+.ed textarea { min-height: 72px; resize: vertical; }
+.ph { color: var(--faint); font-style: italic; }
+.tr { font-size: 11px; color: var(--faint); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; white-space: nowrap; font-style: normal; }
+.cf { border-radius: 8px; background: var(--warn-soft); padding: 8px 12px; display: grid; gap: 6px; max-width: 70ch; }
+.cfh { font-size: 12px; color: var(--warn); font-weight: 500; }
+.cfi { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+.cfi .t { flex: 1 1 auto; min-width: 0; }
+.foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 12px; }
+.confirm { display: inline-flex; gap: 6px; align-items: center; color: var(--danger); flex-wrap: wrap; }
+code { font-family: var(--mono); font-size: .9em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+.empty { color: var(--muted); padding: 24px 0; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; background: var(--fg); color: var(--bg); font-size: 13px; padding: 8px 14px; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .2s; max-width: calc(100% - 32px); }
+.toast.show { opacity: 1; }
+.toast.bad { background: var(--danger); color: #fff; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .nav { position: static; max-height: none; overflow: visible; }
+  .navh { display: none; }
+  .navlist { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 0; }
+  .nrow { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  .nrow.on { border-color: transparent; }
+  .nitem { padding: 3px 10px; }
+  .ntool { display: none; }
+  .nrow.on .ntool { display: inline-block; }
+  .nnote { flex-basis: 100%; padding: 2px 4px; }
+  .nform { max-width: 360px; }
+}
+@media (max-width: 680px) { .term { grid-template-columns: minmax(0, 1fr); } .term:target { box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1 id="h1">System1 术语表</h1>
+  <div class="controls" role="search">
+    <input class="search" id="q" type="search" autocomplete="off">
+    <select id="fStatus"></select>
+    <select id="fOwner"></select>
+    <div class="seg" id="langSeg" role="group" aria-label="Язык / 语言">
+      <button type="button" data-lang="zh">中文</button>
+      <button type="button" data-lang="ru">Русский</button>
+    </div>
+    <div class="menuwrap">
+      <button class="btn" id="expBtn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="expMenu"></button>
+      <div class="menu" id="expMenu" role="menu" hidden>
+        <button type="button" role="menuitem" data-exp="zh">中文</button>
+        <button type="button" role="menuitem" data-exp="ru">Русский</button>
+      </div>
+    </div>
+    <button class="btn pri" id="newBtn" type="button"></button>
+  </div>
+  <form class="newform" id="newForm" hidden>
+    <input id="newEn" autocomplete="off">
+    <input id="newName" autocomplete="off">
+    <select id="newGroup"></select>
+    <button class="btn pri" type="submit" id="newOk"></button>
+    <button class="btn" type="button" id="newCancel"></button>
+    <div class="err" id="newErr" hidden></div>
+  </form>
+  <div class="banner" id="banner" hidden></div>
+  <div class="layout" id="layout">
+    <nav class="nav" id="nav">
+      <div class="navh" id="navh"></div>
+      <div class="navlist" id="navList"></div>
+      <button class="btn link sm nadd" id="grpBtn" type="button"></button>
+      <form class="nform" id="grpForm" hidden>
+        <input id="grpEn" autocomplete="off">
+        <div class="nbtns"><button class="btn sm pri" type="submit" id="grpOk"></button><button class="btn sm" type="button" id="grpCancel"></button></div>
+        <div class="err" id="grpErr" hidden></div>
+      </form>
+    </nav>
+    <main id="list"></main>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const UI = {
+  zh: {
+    h1: "System1 术语表", q: "搜索：中文、俄文、英文…",
+    allStatus: "全部状态", allOwner: "全部负责人", allGroup: "全部分类",
+    status: "状态", owner: "负责人", group: "分类",
+    newTerm: "+ 新术语", newEn: "英文名，例如 channel_connection", newName: "中文名", create: "创建", cancel: "取消",
+    ex: "例子：", conflicts: "冲突点", addConflict: "+ 添加冲突点", del: "删除",
+    delTerm: "删除术语", confirmDel: "确定删除这个术语？会删掉对应的 JSON 文件。", yes: "删除",
+    fill: "点击填写", addEx: "+ 添加例子", empty: "没有找到。", emptyAll: "还没有术语。点「+ 新术语」添加第一个。",
+    onlyOther: "仅俄文", link: "术语链接",
+    noServer: "页面需要通过本地小服务打开才能读取和保存术语。在仓库根目录运行 <code>python3 docs/glossary/serve.py</code>，再打开 <code>http://127.0.0.1:8000</code>。",
+    badFile: "有文件无法解析，请手动修正：",
+    saved: "已保存", deleted: "已删除", created: "已创建", failed: "保存失败：",
+    needEn: "请填写英文名。", dupId: "已经有同名术语：", newConflict: "点这里写冲突点",
+    sections: "分类", allTerms: "全部", newGroup: "+ 新分类", groupEn: "英文名，例如 analytics",
+    rename: "重命名分类", delGroup: "删除分类", confirmDelGroup: "删除这个空分类？", dupGroup: "已经有这个分类：",
+    groupBusy: (n) => `这个分类里还有 ${n} 个术语，先把它们移到别的分类。`, ok: "知道了",
+    emptyGroup: "这个分类还没有术语。",
+    exp: "导出 MD", expFail: "导出失败：", renamed: "已保存，文件改名为 "
+  },
+  ru: {
+    h1: "Словарь System1", q: "Поиск: русский, English, 中文…",
+    allStatus: "Все статусы", allOwner: "Все ответственные", allGroup: "Все разделы",
+    status: "Статус", owner: "Ответственный", group: "Раздел",
+    newTerm: "+ Новый термин", newEn: "Английское имя, напр. channel_connection", newName: "Название по-русски", create: "Создать", cancel: "Отмена",
+    ex: "Пример:", conflicts: "Спорные моменты", addConflict: "+ Добавить спорный момент", del: "Удалить",
+    delTerm: "Удалить термин", confirmDel: "Удалить этот термин? Его JSON-файл будет удалён.", yes: "Удалить",
+    fill: "Нажмите, чтобы заполнить", addEx: "+ Добавить пример", empty: "Ничего не найдено.", emptyAll: "Терминов пока нет. Нажмите «+ Новый термин».",
+    onlyOther: "только 中文", link: "Ссылка на термин",
+    noServer: "Страницу нужно открыть через локальный сервер. В корне репозитория запустите <code>python3 docs/glossary/serve.py</code> и откройте <code>http://127.0.0.1:8000</code>.",
+    badFile: "Не удалось разобрать файлы, исправьте вручную: ",
+    saved: "Сохранено", deleted: "Удалено", created: "Создано", failed: "Не удалось сохранить: ",
+    needEn: "Укажите английское имя.", dupId: "Такой термин уже есть: ", newConflict: "Нажмите, чтобы описать спорный момент",
+    sections: "Разделы", allTerms: "Все", newGroup: "+ Новый раздел", groupEn: "Английское имя, напр. analytics",
+    rename: "Переименовать раздел", delGroup: "Удалить раздел", confirmDelGroup: "Удалить этот пустой раздел?", dupGroup: "Такой раздел уже есть: ",
+    groupBusy: (n) => `Терминов в разделе: ${n}. Сначала перенесите их в другой раздел.`, ok: "Понятно",
+    emptyGroup: "В этом разделе пока нет терминов.",
+    exp: "Экспорт MD", expFail: "Не удалось экспортировать: ", renamed: "Сохранено, файл переименован в "
+  }
+};
+
+/* Markdown export: one table per section with term, English name and description, in the chosen language. */
+const EXPORT = {
+  zh: { title: "System1 术语表", head: ["术语", "英文", "描述"] },
+  ru: { title: "Словарь System1", head: ["Термин", "English", "Описание"] }
+};
+
+const S = { lang: "zh", q: "", fStatus: "", fOwner: "", fGroup: "", meta: null, terms: [], broken: [], editing: false, confirmDel: null, autoEdit: null, navMsg: null };
+try {
+  const saved = localStorage.getItem("s1-glossary-lang");
+  if (saved === "zh" || saved === "ru") S.lang = saved;
+  else if ((navigator.language || "").toLowerCase().startsWith("ru")) S.lang = "ru";
+} catch (e) {}
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const fmt = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+const other = () => (S.lang === "zh" ? "ru" : "zh");
+const L = () => UI[S.lang];
+const byId = (id) => S.terms.find((t) => t.id === id);
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const label = (x) => x[S.lang] || x[other()] || x.id;
+const metaName = (list, id) => { const m = (S.meta?.[list] || []).find((x) => x.id === id); return m ? label(m) : id; };
+const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
+
+function toast(msg, bad) {
+  const el = $("toast"); el.textContent = msg; el.classList.toggle("bad", !!bad); el.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), bad ? 4000 : 1800);
+}
+
+/* ---------- Server ---------- */
+async function api(method, path, body) {
+  const res = await fetch(path, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.status);
+  return data;
+}
+async function load() {
+  try {
+    const data = await api("GET", "/api/glossary");
+    S.meta = data.meta;
+    S.broken = data.terms.filter((t) => t._error).map((t) => t._error);
+    S.terms = data.terms.filter((t) => !t._error);
+    render();
+    if (location.hash) { const el = document.getElementById(decodeURIComponent(location.hash.slice(1))); if (el) el.scrollIntoView(); }
+  } catch (e) {
+    S.meta = null; render();
+  }
+}
+const saving = {};
+/* `from` is the old id when the English name changed: the server renames the file.
+   The new id's save queue continues the old one, so earlier pending saves land first. */
+function save(t, from) {
+  const { id, ...body } = t;
+  if (from) body._from = from;
+  const run = () => api("PUT", "/api/terms/" + id, body)
+    .then(() => toast(from ? L().renamed + id + ".json" : L().saved))
+    .catch((e) => { toast(L().failed + e.message, true); if (from) load(); });
+  const prev = (from ? saving[from] : saving[id]) || Promise.resolve();
+  saving[id] = prev.then(run, run);
+  if (from) delete saving[from];
+}
+
+/* ---------- Rendering ---------- */
+function biText(obj, cls, field, id, ph) {
+  const v = (obj && obj[S.lang]) || "", o = (obj && obj[other()]) || "";
+  let inner;
+  if (v) inner = fmt(v);
+  else if (o) inner = fmt(o) + `<span class="tr">${esc(L().onlyOther)}</span>`;
+  else inner = `<span class="ph">${esc(ph || L().fill)}</span>`;
+  return `<span class="ed ${cls}" data-id="${esc(id)}" data-field="${field}" data-kind="textarea">${inner}</span>`;
+}
+function plain(id, field, value, cls) {
+  return `<span class="ed ${cls}" data-id="${esc(id)}" data-field="${field}" data-kind="input">${value ? esc(value) : `<span class="ph">${esc(L().fill)}</span>`}</span>`;
+}
+function select(id, kind, value, list) {
+  const cls = kind === "status" ? ` class="st-${esc(value)}"` : "";
+  return `<select${cls} data-id="${esc(id)}" data-sel="${kind}" aria-label="${esc(L()[kind])}">` +
+    list.map((x) => `<option value="${esc(x.id)}"${x.id === value ? " selected" : ""}>${esc(label(x))}</option>`).join("") + `</select>`;
+}
+function matches(t, withGroup) {
+  const q = S.q.trim().toLowerCase();
+  return (!S.fStatus || t.status === S.fStatus) && (!S.fOwner || t.owner === S.fOwner) &&
+    (!withGroup || !S.fGroup || t.group === S.fGroup) && (!q || haystack(t).includes(q));
+}
+function haystack(t) {
+  return [t.ru, t.en, t.zh, t.def?.ru, t.def?.zh, t.ex?.ru, t.ex?.zh, ...(t.conflicts || [])].join(" ").toLowerCase();
+}
+
+function renderChrome() {
+  const l = L();
+  document.documentElement.lang = S.lang;
+  document.title = l.h1;
+  $("h1").textContent = l.h1;
+  $("q").placeholder = l.q; $("q").setAttribute("aria-label", l.q);
+  const opts = (all, list, cur) => `<option value="">${esc(all)}</option>` + (list || []).map((x) => `<option value="${esc(x.id)}"${x.id === cur ? " selected" : ""}>${esc(x[S.lang])}</option>`).join("");
+  $("fStatus").innerHTML = opts(l.allStatus, S.meta?.statuses, S.fStatus); $("fStatus").setAttribute("aria-label", l.status);
+  $("fOwner").innerHTML = opts(l.allOwner, S.meta?.owners, S.fOwner); $("fOwner").setAttribute("aria-label", l.owner);
+  $("langSeg").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === S.lang)));
+  $("newBtn").textContent = l.newTerm; $("newBtn").hidden = !S.meta;
+  $("expBtn").textContent = l.exp; $("expBtn").hidden = !S.meta;
+  if (!S.meta) closeExport();
+  $("newEn").placeholder = l.newEn; $("newEn").setAttribute("aria-label", l.newEn);
+  $("newName").placeholder = S.lang === "zh" ? l.newName : l.newName; $("newName").setAttribute("aria-label", l.newName);
+  const ng = $("newGroup"), ngCur = ng.value;
+  ng.innerHTML = (S.meta?.groups || []).map((g) => `<option value="${esc(g.id)}">${esc(label(g))}</option>`).join("");
+  if (ngCur && S.meta?.groups.some((g) => g.id === ngCur)) ng.value = ngCur;
+  ng.setAttribute("aria-label", l.group);
+  $("newOk").textContent = l.create; $("newCancel").textContent = l.cancel;
+  $("layout").classList.toggle("nonav", !S.meta); $("nav").hidden = !S.meta;
+  $("nav").setAttribute("aria-label", l.sections); $("navh").textContent = l.sections;
+  $("grpBtn").textContent = l.newGroup; $("grpBtn").hidden = !$("grpForm").hidden;
+  $("grpEn").placeholder = l.groupEn; $("grpEn").setAttribute("aria-label", l.groupEn);
+  $("grpOk").textContent = l.create; $("grpCancel").textContent = l.cancel;
+  const b = $("banner");
+  if (!S.meta) { b.hidden = false; b.innerHTML = l.noServer; }
+  else if (S.broken.length) { b.hidden = false; b.textContent = l.badFile + S.broken.join("; "); }
+  else b.hidden = true;
+}
+
+function termHTML(t) {
+  const l = L(), id = t.id;
+  const owner = (S.meta.owners || []).find((o) => o.id === t.owner);
+  const dot = `<i class="dot" style="background:${esc(owner ? owner.color : "#9aa1ab")}"></i>`;
+  const meta = select(id, "status", t.status, S.meta.statuses) +
+    `<span class="owner">${dot}${select(id, "owner", t.owner, S.meta.owners)}</span>` +
+    select(id, "group", t.group, S.meta.groups);
+  const conflicts = t.conflicts || [];
+  const items = conflicts.map((c, i) => `<div class="cfi"><span class="ed t" data-id="${esc(id)}" data-field="c:${i}" data-kind="textarea">${c ? fmt(c) : `<span class="ph">${esc(l.newConflict)}</span>`}</span><button class="btn sm" type="button" data-act="cf-del" data-id="${esc(id)}" data-i="${i}">${esc(l.del)}</button></div>`).join("");
+  const add = `<button class="btn sm" type="button" data-act="cf-add" data-id="${esc(id)}">${esc(l.addConflict)}</button>`;
+  const cf = conflicts.length ? `<div class="cf"><div class="cfh">${esc(l.conflicts)} · ${conflicts.length}</div>${items}<div>${add}</div></div>` : `<div>${add}</div>`;
+  const exHas = t.ex && (t.ex.zh || t.ex.ru);
+  const ex = exHas ? `<p class="ex"><b>${esc(l.ex)}</b> ${biText(t.ex, "", "ex", id)}</p>` : `<p class="ex">${biText(t.ex, "", "ex", id, l.addEx)}</p>`;
+  const del = S.confirmDel === id
+    ? `<span class="confirm">${esc(l.confirmDel)} <button class="btn sm danger" type="button" data-act="del-yes" data-id="${esc(id)}">${esc(l.yes)}</button><button class="btn sm" type="button" data-act="del-no">${esc(l.cancel)}</button></span>`
+    : `<button class="btn link sm" type="button" data-act="del" data-id="${esc(id)}">${esc(l.delTerm)}</button>`;
+  return `<article class="term" id="${esc(id)}">
+    <div class="names">
+      <div class="n1row">${plain(id, S.lang, t[S.lang], "n1")}<a href="#${esc(id)}" aria-label="${esc(l.link)}">#</a></div>
+      ${plain(id, "en", t.en, "n2")}
+      ${plain(id, other(), t[other()], "n3")}
+      <div class="meta">${meta}</div>
+    </div>
+    <div class="body"><p>${biText(t.def, "", "def", id)}</p>${ex}${cf}<div class="foot">${del}</div></div>
+  </article>`;
+}
+
+/* Groups referenced by terms but missing from meta.json are listed after the known ones. */
+function groupIds() {
+  const known = S.meta.groups.map((g) => g.id), set = new Set(known);
+  return [...known, ...new Set(S.terms.map((t) => t.group).filter((g) => !set.has(g)))];
+}
+
+function renderNav() {
+  const l = L(), nav = $("navList");
+  if (!S.meta) { nav.innerHTML = ""; return; }
+  if (S.fGroup && !groupIds().includes(S.fGroup)) S.fGroup = "";
+  const base = S.terms.filter((t) => matches(t, false));
+  const item = (id, name, n, isPh) =>
+    `<button class="nitem" type="button" data-nav="${esc(id)}" aria-pressed="${S.fGroup === id}"><span class="nm${isPh ? " ph" : ""}">${esc(name)}</span><span class="cnt">${n}</span></button>`;
+  let html = `<div class="nrow${S.fGroup === "" ? " on" : ""}">${item("", l.allTerms, base.length)}</div>`;
+  for (const id of groupIds()) {
+    const g = S.meta.groups.find((x) => x.id === id);
+    const n = base.filter((t) => t.group === id).length;
+    const tools = g ? `<button class="ntool" type="button" data-gact="rename" data-g="${esc(id)}" aria-label="${esc(l.rename)}" title="${esc(l.rename)}">✎</button><button class="ntool" type="button" data-gact="del" data-g="${esc(id)}" aria-label="${esc(l.delGroup)}" title="${esc(l.delGroup)}">×</button>` : "";
+    html += `<div class="nrow${S.fGroup === id ? " on" : ""}" data-g="${esc(id)}">${item(id, g ? label(g) : id, n, !g || !(g.zh || g.ru))}${tools}</div>`;
+    const m = S.navMsg;
+    if (m && m.id === id) {
+      html += m.kind === "busy"
+        ? `<div class="nnote">${esc(l.groupBusy(m.n))}<div><button class="btn sm" type="button" data-gact="msg-close">${esc(l.ok)}</button></div></div>`
+        : `<div class="nnote">${esc(l.confirmDelGroup)}<div><button class="btn sm danger" type="button" data-gact="del-yes" data-g="${esc(id)}">${esc(l.yes)}</button><button class="btn sm" type="button" data-gact="msg-close">${esc(l.cancel)}</button></div></div>`;
+    }
+  }
+  nav.innerHTML = html;
+}
+
+function render() {
+  if (S.editing) return;
+  renderChrome();
+  renderNav();
+  const list = $("list");
+  if (!S.meta) { list.innerHTML = ""; return; }
+  if (!S.terms.length) { list.innerHTML = `<p class="empty">${esc(L().emptyAll)}</p>`; return; }
+  const vis = S.terms.filter((t) => matches(t, true));
+  if (!vis.length) {
+    const emptyGroup = S.fGroup && !S.terms.some((t) => t.group === S.fGroup);
+    list.innerHTML = `<p class="empty">${esc(emptyGroup ? L().emptyGroup : L().empty)}</p>`; return;
+  }
+  const groups = S.meta.groups.map((g) => g.id);
+  const known = new Set(groups);
+  const extra = [...new Set(vis.map((t) => t.group).filter((g) => !known.has(g)))];
+  list.innerHTML = [...groups, ...extra].map((g) => {
+    const items = vis.filter((t) => t.group === g).sort((a, b) => (a.order || 0) - (b.order || 0) || String(a[S.lang] || a.en).localeCompare(String(b[S.lang] || b.en)));
+    if (!items.length) return "";
+    return `<section aria-labelledby="g-${esc(g)}"><h2 id="g-${esc(g)}">${esc(metaName("groups", g))}</h2>${items.map(termHTML).join("")}</section>`;
+  }).join("");
+  if (S.autoEdit) {
+    const el = list.querySelector(`.ed[data-id="${CSS.escape(S.autoEdit.id)}"][data-field="${CSS.escape(S.autoEdit.field)}"]`);
+    S.autoEdit = null;
+    if (el) { el.scrollIntoView({ block: "center" }); startEdit(el); }
+  }
+}
+
+/* ---------- Editing ---------- */
+function rawValue(t, field) {
+  if (["ru", "en", "zh"].includes(field)) return t[field] || "";
+  if (field === "def" || field === "ex") return (t[field] && t[field][S.lang]) || "";
+  if (field.startsWith("c:")) return (t.conflicts || [])[+field.slice(2)] || "";
+  return "";
+}
+function setValue(t, field, v) {
+  if (["ru", "en", "zh"].includes(field)) t[field] = v;
+  else if (field === "def" || field === "ex") t[field] = { ...(t[field] || {}), [S.lang]: v };
+  else if (field.startsWith("c:")) { t.conflicts = [...(t.conflicts || [])]; t.conflicts[+field.slice(2)] = v; }
+}
+function replaceTerm(nt) { S.terms = S.terms.map((x) => (x.id === nt.id ? nt : x)); }
+
+function startEdit(el) {
+  if (S.editing) return;
+  const t = byId(el.dataset.id); if (!t) return;
+  const field = el.dataset.field, kind = el.dataset.kind;
+  const original = rawValue(t, field);
+  const f = document.createElement(kind === "input" ? "input" : "textarea");
+  f.value = original; f.setAttribute("aria-label", field);
+  S.editing = true;
+  el.innerHTML = ""; el.appendChild(f); f.focus();
+  if (kind === "input") f.select();
+  let done = false;
+  const finish = (keep) => {
+    if (done) return; done = true; S.editing = false;
+    const v = f.value.trim();
+    const cur = byId(t.id);
+    if (keep && v !== original && cur) {
+      const nt = clone(cur); setValue(nt, field, v);
+      if (field.startsWith("c:") && !v) nt.conflicts = nt.conflicts.filter((c) => c);
+      const newId = field === "en" ? slug(v) : "";
+      if (newId && newId !== cur.id) {
+        // File name follows the English name: service_spec -> service-spec.json
+        if (byId(newId)) { toast(L().dupId + newId, true); render(); return; }
+        nt.id = newId;
+        S.terms = S.terms.map((x) => (x.id === cur.id ? nt : x));
+        if (location.hash === "#" + cur.id) history.replaceState(null, "", "#" + newId);
+        save(nt, cur.id);
+      } else { replaceTerm(nt); save(nt); }
+    } else if (field.startsWith("c:") && !original && !v && cur) {
+      const nt = clone(cur); nt.conflicts = (nt.conflicts || []).filter((c) => c); replaceTerm(nt);
+    }
+    render();
+  };
+  f.addEventListener("blur", () => finish(true));
+  f.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    else if (e.key === "Enter" && (kind === "input" || e.ctrlKey || e.metaKey)) { e.preventDefault(); finish(true); }
+  });
+}
+
+$("list").addEventListener("click", (e) => {
+  const act = e.target.closest("[data-act]");
+  if (act) {
+    const id = act.dataset.id, t = id && byId(id);
+    const a = act.dataset.act;
+    if (a === "cf-add" && t) {
+      const nt = clone(t); nt.conflicts = [...(nt.conflicts || []), ""];
+      if (nt.status !== "warn" && S.meta.statuses.some((s) => s.id === "warn")) { nt.status = "warn"; save({ ...nt, conflicts: nt.conflicts.filter((c) => c) }); }
+      replaceTerm(nt);
+      S.autoEdit = { id, field: "c:" + (nt.conflicts.length - 1) };
+      render();
+    } else if (a === "cf-del" && t) {
+      const nt = clone(t); nt.conflicts.splice(+act.dataset.i, 1); replaceTerm(nt); save(nt); render();
+    } else if (a === "del") { S.confirmDel = id; render(); }
+    else if (a === "del-no") { S.confirmDel = null; render(); }
+    else if (a === "del-yes" && t) {
+      S.confirmDel = null; S.terms = S.terms.filter((x) => x.id !== id); render();
+      api("DELETE", "/api/terms/" + id).then(() => toast(L().deleted)).catch((err) => { toast(L().failed + err.message, true); load(); });
+    }
+    return;
+  }
+  const ed = e.target.closest(".ed");
+  if (ed && !e.target.closest("a")) startEdit(ed);
+});
+$("list").addEventListener("change", (e) => {
+  const s = e.target.closest("select[data-sel]"); if (!s) return;
+  const t = byId(s.dataset.id); if (!t) return;
+  const nt = clone(t); nt[s.dataset.sel] = s.value; replaceTerm(nt); save(nt); render();
+});
+$("q").addEventListener("input", (e) => { S.q = e.target.value; render(); });
+$("fStatus").addEventListener("change", (e) => { S.fStatus = e.target.value; render(); });
+$("fOwner").addEventListener("change", (e) => { S.fOwner = e.target.value; render(); });
+
+/* ---------- Sections (left nav) ---------- */
+let groupChain = Promise.resolve();
+function putGroups(groups) {
+  const run = () => api("PUT", "/api/groups", { groups });
+  const p = groupChain.then(run, run);
+  groupChain = p.catch(() => {});
+  return p;
+}
+function saveGroups(groups, okMsg) {
+  S.meta = { ...S.meta, groups };
+  render();
+  putGroups(groups).then(() => toast(okMsg)).catch((e) => { toast(L().failed + e.message, true); load(); });
+}
+function startRename(id) {
+  if (S.editing) return;
+  const row = $("navList").querySelector(`.nrow[data-g="${CSS.escape(id)}"]`);
+  const g = S.meta.groups.find((x) => x.id === id);
+  if (!row || !g) return;
+  const original = g[S.lang] || "";
+  const f = document.createElement("input");
+  f.value = original; f.placeholder = g[other()] || g.id; f.setAttribute("aria-label", L().rename);
+  S.editing = true;
+  row.innerHTML = ""; row.appendChild(f); f.focus(); f.select();
+  let done = false;
+  const finish = (keep) => {
+    if (done) return; done = true; S.editing = false;
+    const v = f.value.trim();
+    if (keep && v !== original && S.meta.groups.some((x) => x.id === id)) {
+      saveGroups(S.meta.groups.map((x) => (x.id === id ? { ...x, [S.lang]: v } : x)), L().saved);
+    } else render();
+  };
+  f.addEventListener("blur", () => finish(true));
+  f.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    else if (e.key === "Enter") { e.preventDefault(); finish(true); }
+  });
+}
+$("navList").addEventListener("click", (e) => {
+  const nav = e.target.closest("[data-nav]");
+  if (nav) {
+    S.fGroup = nav.dataset.nav; S.navMsg = null; S.confirmDel = null;
+    render();
+    const top = $("layout").getBoundingClientRect().top + window.scrollY - 16;
+    if (window.scrollY > top) window.scrollTo({ top });
+    return;
+  }
+  const b = e.target.closest("[data-gact]"); if (!b) return;
+  const id = b.dataset.g, a = b.dataset.gact;
+  if (a === "rename") startRename(id);
+  else if (a === "del") {
+    const n = S.terms.filter((t) => t.group === id).length;
+    S.navMsg = { id, kind: n ? "busy" : "confirm", n }; render();
+  } else if (a === "msg-close") { S.navMsg = null; render(); }
+  else if (a === "del-yes") {
+    S.navMsg = null;
+    if (S.fGroup === id) S.fGroup = "";
+    saveGroups(S.meta.groups.filter((g) => g.id !== id), L().deleted);
+  }
+});
+$("grpBtn").addEventListener("click", () => { $("grpForm").hidden = false; $("grpBtn").hidden = true; $("grpErr").hidden = true; $("grpEn").focus(); });
+$("grpCancel").addEventListener("click", () => { $("grpForm").hidden = true; $("grpBtn").hidden = false; $("grpEn").value = ""; });
+$("grpEn").addEventListener("input", () => { $("grpErr").hidden = true; });
+$("grpForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const en = $("grpEn").value.trim();
+  const err = (m) => { $("grpErr").textContent = m; $("grpErr").hidden = false; };
+  if (!en) return err(L().needEn);
+  const id = slug(en) || "group-" + Date.now();
+  if (S.meta.groups.some((g) => g.id === id)) return err(L().dupGroup + id);
+  const groups = [...S.meta.groups, { id, zh: "", ru: "" }];
+  try {
+    await putGroups(groups);
+    S.meta = { ...S.meta, groups };
+    $("grpForm").hidden = true; $("grpBtn").hidden = false; $("grpEn").value = "";
+    toast(L().created);
+    S.fGroup = id; S.navMsg = null;
+    render();
+    startRename(id);
+  } catch (ex) { err(L().failed + ex.message); }
+});
+$("langSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  S.lang = b.dataset.lang;
+  try { localStorage.setItem("s1-glossary-lang", S.lang); } catch (err) {}
+  render();
+});
+/* ---------- Export ---------- */
+function toMarkdown(meta, terms, lang) {
+  const cell = (s) => String(s || "").replace(/\s*\n\s*/g, " ").replace(/\|/g, "\\|").trim();
+  const E = EXPORT[lang];
+  const known = meta.groups.map((g) => g.id), set = new Set(known);
+  const ids = [...known, ...new Set(terms.map((t) => t.group).filter((g) => !set.has(g)))];
+  const out = [`# ${E.title}`, ""];
+  for (const gid of ids) {
+    const items = terms.filter((t) => t.group === gid)
+      .sort((a, b) => (a.order || 0) - (b.order || 0) || String(a[lang] || a.en).localeCompare(String(b[lang] || b.en)));
+    if (!items.length) continue;
+    const g = meta.groups.find((x) => x.id === gid);
+    out.push(`## ${cell((g && g[lang]) || gid)}`, "", `| ${E.head.join(" | ")} |`, "|---|---|---|");
+    for (const t of items) {
+      const en = t.en ? "`" + cell(t.en) + "`" : "";
+      out.push(`| ${cell(t[lang] || t.en || t.id)} | ${en} | ${cell(t.def && t.def[lang])} |`);
+    }
+    out.push("");
+  }
+  return out.join("\n").trimEnd() + "\n";
+}
+async function exportMd(lang) {
+  try {
+    // Wait for edits still being saved, then read the files as they are on disk.
+    await Promise.all([...Object.values(saving), groupChain].map((p) => p.catch(() => {})));
+    const data = await api("GET", "/api/glossary");
+    const md = toMarkdown(data.meta, data.terms.filter((t) => !t._error), lang);
+    const url = URL.createObjectURL(new Blob([md], { type: "text/markdown;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `System1-glossary-${lang}.md`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) { toast(L().expFail + e.message, true); }
+}
+function closeExport() { $("expMenu").hidden = true; $("expBtn").setAttribute("aria-expanded", "false"); }
+$("expBtn").addEventListener("click", () => {
+  const open = $("expMenu").hidden;
+  $("expMenu").hidden = !open; $("expBtn").setAttribute("aria-expanded", String(open));
+  if (open) $("expMenu").querySelector("button").focus();
+});
+$("expMenu").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-exp]"); if (!b) return;
+  closeExport(); $("expBtn").focus();
+  exportMd(b.dataset.exp);
+});
+document.addEventListener("click", (e) => { if (!e.target.closest(".menuwrap")) closeExport(); });
+$("expMenu").parentElement.addEventListener("keydown", (e) => {
+  if ($("expMenu").hidden) return;
+  if (e.key === "Escape") { e.preventDefault(); closeExport(); $("expBtn").focus(); }
+  else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const items = [...$("expMenu").querySelectorAll("button")];
+    const i = items.indexOf(document.activeElement);
+    items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length].focus();
+  }
+});
+
+$("newBtn").addEventListener("click", () => {
+  $("newForm").hidden = false; $("newErr").hidden = true;
+  if (S.fGroup && S.meta.groups.some((g) => g.id === S.fGroup)) $("newGroup").value = S.fGroup;
+  $("newEn").focus();
+});
+$("newCancel").addEventListener("click", () => { $("newForm").hidden = true; });
+$("newEn").addEventListener("input", () => { $("newErr").hidden = true; });
+$("newForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const en = $("newEn").value.trim(), name = $("newName").value.trim();
+  const err = (m) => { $("newErr").textContent = m; $("newErr").hidden = false; };
+  if (!en) return err(L().needEn);
+  const id = slug(en) || "term-" + Date.now();
+  if (byId(id)) return err(L().dupId + id);
+  const group = $("newGroup").value;
+  const order = Math.max(0, ...S.terms.filter((t) => t.group === group).map((t) => t.order || 0)) + 1;
+  const t = { id, group, order, owner: "none", status: "prop", ru: "", en, zh: "", def: { zh: "", ru: "" }, ex: { zh: "", ru: "" }, conflicts: [] };
+  t[S.lang] = name;
+  try {
+    await api("PUT", "/api/terms/" + id, (({ id: _, ...b }) => b)(t));
+    S.terms.push(t);
+    $("newForm").hidden = true; $("newEn").value = ""; $("newName").value = "";
+    toast(L().created);
+    S.fStatus = S.fOwner = ""; S.fGroup = group; S.q = ""; $("q").value = "";
+    S.autoEdit = { id, field: "def" };
+    history.replaceState(null, "", "#" + id);
+    render();
+  } catch (ex) { err(L().failed + ex.message); }
+});
+
+render();
+load();
+</script>
+</body>
+</html>

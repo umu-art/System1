@@ -1,0 +1,18 @@
+{
+  "group": "services",
+  "order": 10,
+  "owner": "sasha",
+  "status": "ok",
+  "ru": "Валидатор сценариев",
+  "en": "workflow_validator",
+  "zh": "流程校验器",
+  "def": {
+    "zh": "接收 Copilot 生成的服务规格并做校验：用 JSON Schema 检查格式，再检查阶段之间的引用。",
+    "ru": "Принимает спецификацию от копилота и проверяет её: формат по JSON Schema и ссылки между этапами."
+  },
+  "ex": {
+    "zh": "",
+    "ru": ""
+  },
+  "conflicts": []
+}

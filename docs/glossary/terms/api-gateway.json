@@ -1,0 +1,18 @@
+{
+  "group": "services",
+  "order": 2,
+  "owner": "petr",
+  "status": "ok",
+  "ru": "API-шлюз",
+  "en": "api_gateway",
+  "zh": "API 网关",
+  "def": {
+    "zh": "Nginx 反向代理，进入内核的唯一入口。不需要单独写 API 文档，它只是技术组件。",
+    "ru": "Nginx reverse proxy, единственный вход в ядро. Отдельное описание API не нужно: это техническая часть."
+  },
+  "ex": {
+    "zh": "",
+    "ru": ""
+  },
+  "conflicts": []
+}

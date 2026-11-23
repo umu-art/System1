@@ -1,0 +1,18 @@
+{
+  "group": "scenario",
+  "order": 3,
+  "owner": "sasha",
+  "status": "ok",
+  "ru": "Этап",
+  "en": "stage",
+  "zh": "阶段",
+  "def": {
+    "zh": "流程里的一步。",
+    "ru": "Один шаг сценария."
+  },
+  "ex": {
+    "zh": "",
+    "ru": ""
+  },
+  "conflicts": []
+}
