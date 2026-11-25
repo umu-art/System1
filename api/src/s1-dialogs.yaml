@@ -2,20 +2,902 @@ openapi: 3.1.0
 
 info:
   title: Dialogs Api
-  description: Контракт сервиса s1-dialogs.
+  description: Контракт сервиса s1-dialogs. Сервис хранит клиентов и их диалоги с сервисами авторов, а шлюз каналов и автор работают с ними через этот API.
   version: 1.0.0
 
 paths:
-  /api/dialogs/info:
-    get:
+  # ---------- Клиенты ----------
+  /api/dialogs/client:
+    post:
       tags:
-        - dialogs
-      operationId: getDialogsInfo
-      summary: Узнать, какой сервис отвечает и в каком окружении
+        - client
+      operationId: createClient
+      summary: Создать клиента
+      description: Заводит в системе нового клиента — человека, который написал боту сервиса.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClientRequest'
       responses:
-        '200':
-          description: Сведения о сервисе
+        '201':
+          description: Клиент создан
           content:
             application/json:
               schema:
-                $ref: './common.yaml#/components/schemas/ServiceInfoDto'
+                $ref: '#/components/schemas/ClientDto'
+    put:
+      tags:
+        - client
+      operationId: updateClient
+      summary: Синхронизировать данные клиента с платформой
+      description: Обновляет данные клиента.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClientRequest'
+      responses:
+        '200':
+          description: Данные клиента обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientDto'
+    get:
+      tags:
+        - client
+      operationId: getClient
+      summary: Получить клиента сервиса
+      description: Возвращает клиента сервиса автора вместе с его статусом в этом сервисе.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Идентификатор клиента.
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Сервис автора.
+      responses:
+        '200':
+          description: Клиент сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceClientDto'
+
+  /api/dialogs/client/list:
+    get:
+      tags:
+        - client
+      operationId: listClients
+      summary: Получить клиентов сервиса
+      description: Возвращает клиентов сервиса автора постранично, новые первыми.
+      parameters:
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Сервис автора.
+        - name: blocked
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: Показать только заблокированных автором (true) или только незаблокированных (false) клиентов.
+        - name: restricted
+          in: query
+          required: false
+          schema:
+            type: boolean
+            description: Показать только клиентов, которых тариф автора не позволяет обслуживать (true), или только остальных (false).
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Номер страницы, начиная с 0.
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Количество записей на странице.
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Страница клиентов сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceClientPageDto'
+
+  /api/dialogs/client/block:
+    post:
+      tags:
+        - client
+      operationId: blockClient
+      summary: Заблокировать клиента в сервисе
+      description: Блокирует клиента в сервисе автора, сервис перестаёт ему отвечать.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceClientRequest'
+      responses:
+        '200':
+          description: Клиент заблокирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceClientDto'
+
+  /api/dialogs/client/unblock:
+    post:
+      tags:
+        - client
+      operationId: unblockClient
+      summary: Разблокировать клиента в сервисе
+      description: Снимает блокировку клиента в сервисе автора.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceClientRequest'
+      responses:
+        '200':
+          description: Клиент разблокирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceClientDto'
+
+  # ---------- Диалоги ----------
+  /api/dialogs/dialog:
+    post:
+      tags:
+        - dialog
+      operationId: createDialog
+      summary: Создать диалог с клиентом
+      description: Создаёт диалог клиента с сервисом в одном канале. В этом диалоге хранятся сообщения клиента и ответы сервиса.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDialogRequest'
+      responses:
+        '201':
+          description: Диалог создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogDto'
+    get:
+      tags:
+        - dialog
+      operationId: getDialog
+      summary: Получить диалог сервиса
+      description: Возвращает диалог сервиса автора.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Идентификатор диалога.
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Сервис автора.
+      responses:
+        '200':
+          description: Диалог
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogDto'
+    delete:
+      tags:
+        - dialog
+      operationId: deleteDialog
+      summary: Удалить диалог сервиса
+      description: Удаляет диалог сервиса автора. Удаление мягкое — переписка сохраняется в базе, но диалог считается несуществующим. Клиент остаётся клиентом сервиса.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Идентификатор диалога.
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Сервис автора.
+      responses:
+        '204':
+          description: Диалог удалён
+
+  /api/dialogs/dialog/list:
+    get:
+      tags:
+        - dialog
+      operationId: listDialogs
+      summary: Получить диалоги сервиса
+      description: Возвращает диалоги сервиса автора постранично, сначала диалоги с самыми свежими сообщениями.
+      parameters:
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Сервис автора.
+        - name: clientId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+            description: Показать только диалоги этого клиента.
+        - name: status
+          in: query
+          required: false
+          description: Показать только диалоги с этим статусом.
+          schema:
+            $ref: '#/components/schemas/DialogStatus'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Номер страницы, начиная с 0.
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Количество записей на странице.
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Страница диалогов сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DialogPageDto'
+
+  /api/dialogs/dialog/client-blocked:
+    post:
+      tags:
+        - dialog
+      operationId: markDialogClientBlocked
+      summary: Отметить, что клиент заблокировал бота
+      description: Сообщает, что клиент заблокировал бота и отправлять сообщения в этот диалог больше нельзя.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialogRequest'
+      responses:
+        '200':
+          description: Статус диалога изменён
+
+  /api/dialogs/dialog/client-unblocked:
+    post:
+      tags:
+        - dialog
+      operationId: markDialogClientUnblocked
+      summary: Отметить, что клиент разблокировал бота
+      description: Сообщает, что клиент разблокировал бота и в диалог снова можно отправлять сообщения.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DialogRequest'
+      responses:
+        '200':
+          description: Статус диалога изменён
+
+  /api/dialogs/dialog/remove-batch:
+    post:
+      tags:
+        - dialog
+      operationId: removeDialogs
+      summary: Удалить диалоги удалённого канала
+      description: Удаляет сразу несколько диалогов, когда шлюз каналов удаляет канал, к которому они относятся. Удаление мягкое. Повторный вызов с уже удалёнными диалогами считается успешным, поэтому шлюз может безопасно повторять запрос.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveDialogsRequest'
+      responses:
+        '200':
+          description: Диалоги удалены
+
+  # ---------- Сообщения ----------
+  /api/dialogs/message:
+    post:
+      tags:
+        - message
+      operationId: createMessage
+      summary: Сохранить сообщение диалога
+      description: Сохраняет сообщение в диалоге — входящее от клиента (его передаёт шлюз каналов) или ответ сервиса (его передаёт движок). 
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMessageRequest'
+      responses:
+        '201':
+          description: Сообщение сохранено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageDto'
+    get:
+      tags:
+        - message
+      operationId: getMessage
+      summary: Получить сообщение
+      description: Возвращает одно сообщение диалога сервиса.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Идентификатор сообщения.
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Сервис автора.
+      responses:
+        '200':
+          description: Сообщение
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageDto'
+
+  /api/dialogs/message/list:
+    get:
+      tags:
+        - message
+      operationId: listMessages
+      summary: Получить сообщения сервиса
+      description: Возвращает сообщения сервиса постранично, новые первыми. Можно оставить только сообщения одного диалога.
+      parameters:
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Сервис автора.
+        - name: dialogId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+            description: Показать только сообщения этого диалога.
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Номер страницы, начиная с 0.
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Количество записей на странице.
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Страница сообщений
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessagePageDto'
+
+  /api/dialogs/message/delivery:
+    post:
+      tags:
+        - message
+      operationId: reportMessageDelivery
+      summary: Сообщить результат отправки ответа
+      description: Шлюз каналов сообщает, удалось ли доставить ответ сервиса на платформу.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageDeliveryRequest'
+      responses:
+        '200':
+          description: Результат отправки сохранён
+
+components:
+  schemas:
+
+    # ---------- Клиенты ----------
+    CreateClientRequest:
+      type: object
+      description: Данные нового клиента из профиля на платформе.
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          description: Отображаемое имя из профиля на платформе.
+          example: Маша
+        language:
+          type: string
+          description: Язык из профиля на платформе.
+          example: ru
+        phone:
+          type: string
+          description: Телефон, если платформа его передала.
+          example: '79161234567'
+        email:
+          type: string
+          description: Email, если платформа его передала.
+          example: masha@example.com
+
+    UpdateClientRequest:
+      type: object
+      description: Актуальные данные клиента из профиля на платформе.
+      required:
+        - clientId
+        - displayName
+      properties:
+        clientId:
+          type: string
+          format: uuid
+          description: Идентификатор клиента.
+        displayName:
+          type: string
+          description: Отображаемое имя из профиля на платформе.
+          example: Маша
+        language:
+          type: string
+          description: Язык из профиля на платформе.
+          example: ru
+        phone:
+          type: string
+          description: Телефон, если платформа его передала.
+          example: '79161234567'
+        email:
+          type: string
+          description: Email, если платформа его передала.
+          example: masha@example.com
+
+    ClientDto:
+      type: object
+      description: Клиент — человек, который пишет ботам сервисов.
+      required:
+        - id
+        - displayName
+        - created
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор клиента.
+        displayName:
+          type: string
+          description: Отображаемое имя.
+          example: Маша
+        language:
+          type: string
+          description: Язык клиента.
+          example: ru
+        phone:
+          type: string
+          description: Телефон клиента.
+          example: '79161234567'
+        email:
+          type: string
+          description: Email клиента.
+          example: masha@example.com
+        created:
+          type: string
+          format: date-time
+          description: Когда клиент создан.
+          example: '2026-11-24T10:00:00Z'
+
+    ServiceClientRequest:
+      type: object
+      description: Клиент в сервисе автора.
+      required:
+        - clientId
+        - serviceId
+      properties:
+        clientId:
+          type: string
+          format: uuid
+          description: Идентификатор клиента.
+        serviceId:
+          type: string
+          format: uuid
+          description: Сервис автора.
+
+    ServiceClientDto:
+      type: object
+      description: Клиент глазами автора сервиса — данные клиента и его статус в сервисе. Если blocked и restricted равны false, клиент пользуется сервисом без ограничений.
+      required:
+        - clientId
+        - serviceId
+        - displayName
+        - blocked
+        - restricted
+        - created
+      properties:
+        clientId:
+          type: string
+          format: uuid
+          description: Идентификатор клиента.
+        serviceId:
+          type: string
+          format: uuid
+          description: Сервис автора.
+        displayName:
+          type: string
+          description: Отображаемое имя.
+          example: Маша
+        language:
+          type: string
+          description: Язык клиента.
+          example: ru
+        phone:
+          type: string
+          description: Телефон клиента.
+          example: '79161234567'
+        email:
+          type: string
+          description: Email клиента.
+          example: masha@example.com
+        blocked:
+          type: boolean
+          description: Автор заблокировал клиента в сервисе.
+          example: false
+        restricted:
+          type: boolean
+          description: Тариф автора не позволяет обслуживать клиента.
+          example: false
+        created:
+          type: string
+          format: date-time
+          description: Когда клиент появился в сервисе.
+          example: '2026-11-24T10:00:00Z'
+
+    ServiceClientPageDto:
+      type: object
+      description: Страница клиентов сервиса.
+      required:
+        - items
+        - page
+        - size
+        - total
+      properties:
+        items:
+          type: array
+          description: Клиенты на странице.
+          items:
+            $ref: '#/components/schemas/ServiceClientDto'
+        page:
+          type: integer
+          description: Номер страницы, начиная с 0.
+        size:
+          type: integer
+          description: Размер страницы.
+        total:
+          type: integer
+          description: Сколько всего клиентов подходит под условия.
+
+    # ---------- Диалоги ----------
+    CreateDialogRequest:
+      type: object
+      description: Данные нового диалога.
+      required:
+        - clientId
+        - serviceId
+        - type
+      properties:
+        clientId:
+          type: string
+          format: uuid
+          description: Клиент, с которым ведётся диалог.
+        serviceId:
+          type: string
+          format: uuid
+          description: Сервис, которому принадлежит диалог.
+        type:
+          $ref: '#/components/schemas/DialogType'
+          description: Тип диалога. Пока поддерживается только private.
+
+    DialogRequest:
+      type: object
+      description: Диалог, к которому относится действие.
+      required:
+        - dialogId
+      properties:
+        dialogId:
+          type: string
+          format: uuid
+          description: Идентификатор диалога.
+
+    RemoveDialogsRequest:
+      type: object
+      description: Диалоги, которые нужно удалить.
+      required:
+        - dialogIds
+      properties:
+        dialogIds:
+          type: array
+          description: Идентификаторы диалогов. Если диалогов больше, шлюз отправляет их несколькими запросами.
+          minItems: 1
+          maxItems: 1000
+          items:
+            type: string
+            format: uuid
+
+    DialogDto:
+      type: object
+      description: Диалог клиента с сервисом в одном канале.
+      required:
+        - id
+        - serviceId
+        - clientId
+        - type
+        - status
+        - created
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор диалога.
+        serviceId:
+          type: string
+          format: uuid
+          description: Сервис, которому принадлежит диалог.
+        clientId:
+          type: string
+          format: uuid
+          description: Клиент, с которым ведётся диалог.
+        type:
+          $ref: '#/components/schemas/DialogType'
+        status:
+          $ref: '#/components/schemas/DialogStatus'
+        lastMessageAt:
+          type: string
+          format: date-time
+          description: Время последнего сообщения в диалоге.
+          example: '2026-11-24T10:00:00Z'
+        created:
+          type: string
+          format: date-time
+          description: Когда диалог создан.
+          example: '2026-11-24T10:00:00Z'
+
+    DialogPageDto:
+      type: object
+      description: Страница диалогов сервиса.
+      required:
+        - items
+        - page
+        - size
+        - total
+      properties:
+        items:
+          type: array
+          description: Диалоги на странице.
+          items:
+            $ref: '#/components/schemas/DialogDto'
+        page:
+          type: integer
+          description: Номер страницы, начиная с 0.
+        size:
+          type: integer
+          description: Размер страницы.
+        total:
+          type: integer
+          description: Сколько всего диалогов подходит под условия.
+
+    DialogType:
+      type: string
+      description: Тип диалога.
+      enum:
+        - private
+        - group
+      example: private
+
+    DialogStatus:
+      type: string
+      description: Состояние диалога. client_blocked_bot — клиент заблокировал бота, отправить сообщение нельзя.
+      enum:
+        - active
+        - client_blocked_bot
+      example: active
+
+    # ---------- Сообщения ----------
+    CreateMessageRequest:
+      type: object
+      description: Сообщение, которое нужно сохранить в диалоге.
+      required:
+        - dialogId
+        - direction
+        - text
+      properties:
+        dialogId:
+          type: string
+          format: uuid
+          description: Диалог, к которому относится сообщение.
+        direction:
+          $ref: '#/components/schemas/MessageDirection'
+        text:
+          type: string
+          description: Текст сообщения.
+          example: Здравствуйте! Сколько стоит доставка?
+        externalId:
+          type: string
+          description: Идентификатор сообщения на платформе, если он уже известен (для входящих сообщений).
+          example: '4521'
+        sentAt:
+          type: string
+          format: date-time
+          description: Когда сообщение отправлено на платформе, если это известно.
+          example: '2026-11-24T10:00:00Z'
+
+    MessageDeliveryRequest:
+      type: object
+      description: Результат отправки ответа на платформу.
+      required:
+        - messageId
+        - result
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          description: Ответ, который шлюз отправлял.
+        result:
+          $ref: '#/components/schemas/MessageDeliveryResult'
+        externalId:
+          type: string
+          description: Идентификатор сообщения на платформе, если отправка удалась.
+          example: '4522'
+
+    MessageDto:
+      type: object
+      description: Сообщение диалога.
+      required:
+        - id
+        - dialogId
+        - direction
+        - text
+        - created
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор сообщения.
+        dialogId:
+          type: string
+          format: uuid
+          description: Диалог, к которому относится сообщение.
+        direction:
+          $ref: '#/components/schemas/MessageDirection'
+        text:
+          type: string
+          description: Текст сообщения.
+          example: Здравствуйте! Сколько стоит доставка?
+        externalId:
+          type: string
+          description: Идентификатор сообщения на платформе. У ответа появляется после успешной отправки.
+          example: '4521'
+        sentAt:
+          type: string
+          format: date-time
+          description: Когда сообщение отправлено на платформе.
+          example: '2026-11-24T10:00:00Z'
+        deliveryStatus:
+          $ref: '#/components/schemas/MessageDeliveryStatus'
+          description: Состояние отправки. Есть только у ответов сервиса.
+        created:
+          type: string
+          format: date-time
+          description: Когда сообщение сохранено в системе.
+          example: '2026-11-24T10:00:01Z'
+
+    MessagePageDto:
+      type: object
+      description: Страница сообщений.
+      required:
+        - items
+        - page
+        - size
+        - total
+      properties:
+        items:
+          type: array
+          description: Сообщения на странице.
+          items:
+            $ref: '#/components/schemas/MessageDto'
+        page:
+          type: integer
+          description: Номер страницы, начиная с 0.
+        size:
+          type: integer
+          description: Размер страницы.
+        total:
+          type: integer
+          description: Сколько всего сообщений подходит под условия.
+
+    MessageDirection:
+      type: string
+      description: Направление сообщения. inbound — сообщение клиента, outbound — ответ сервиса клиенту.
+      enum:
+        - inbound
+        - outbound
+      example: inbound
+
+    MessageDeliveryStatus:
+      type: string
+      description: Состояние отправки ответа. pending — ответ ждёт отправки, sent — доставлен на платформу, failed — отправить не удалось.
+      enum:
+        - pending
+        - sent
+        - failed
+      example: pending
+
+    MessageDeliveryResult:
+      type: string
+      description: Итог попытки отправить ответ на платформу.
+      enum:
+        - sent
+        - failed
+      example: sent

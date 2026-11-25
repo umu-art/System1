@@ -7,7 +7,7 @@
 ```bash
 python ../../api/build.py --langs go
 go run ./s1-dialogs
-curl localhost:8080/api/dialogs/info
+curl localhost:8080/healthz
 ```
 
-Переменные: `PORT` (по умолчанию 8080), `S1_ENV` (по умолчанию `local`).
+Переменные: `PORT` (по умолчанию 8080).

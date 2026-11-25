@@ -1,0 +1,244 @@
+openapi: 3.1.0
+
+info:
+  title: Channels Gateway Api
+  description: Контракт сервиса s1-channels-gateway. Шлюз каналов связывает сервисы авторов с внешними платформами обмена сообщениями. Он хранит подключённых ботов, получает сообщения клиентов, определяет, к какому диалогу они относятся, и доставляет ответы обратно на платформы.
+  version: 1.0.0
+
+paths:
+  /api/channels-gateway/channel:
+    post:
+      tags:
+        - channel
+      operationId: createChannel
+      summary: Подключить сервис к боту
+      description: Подключает сервис автора к боту на внешней платформе, чтобы сервис получал сообщения, которые клиенты пишут боту, и отвечал им через этого бота.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChannelRequest'
+      responses:
+        '201':
+          description: Канал создан, шлюз начал получать сообщения бота
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelDto'
+    get:
+      tags:
+        - channel
+      operationId: getChannel
+      summary: Получить канал
+      description: Возвращает канал сервиса автора. Токен бота не возвращается.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Идентификатор канала.
+      responses:
+        '200':
+          description: Канал
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelDto'
+    put:
+      tags:
+        - channel
+      operationId: updateChannel
+      summary: Заменить токен бота
+      description: Сохраняет новый токен бота, например после того как автор перевыпустил его на платформе. Бот при этом должен остаться тем же самым.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChannelRequest'
+      responses:
+        '200':
+          description: Токен заменён, шлюз получает сообщения бота с новым токеном
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelDto'
+    delete:
+      tags:
+        - channel
+      operationId: deleteChannel
+      summary: Отключить бота от сервиса
+      description: Удаляет канал, например когда автор забирает своего бота. Удаление мягкое — переписка с клиентами сохраняется, но канал и его диалоги считаются несуществующими.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Идентификатор канала.
+      responses:
+        '204':
+          description: Канал удалён, шлюз больше не получает сообщения бота
+
+  /api/channels-gateway/channel/list:
+    get:
+      tags:
+        - channel
+      operationId: listChannels
+      summary: Получить каналы сервиса
+      description: Возвращает каналы сервиса автора постранично, новые первыми.
+      parameters:
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+            description: Сервис автора.
+        - name: status
+          in: query
+          required: false
+          description: Показать только каналы в этом состоянии.
+          schema:
+            $ref: '#/components/schemas/ChannelStatus'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Номер страницы, начиная с 0.
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Количество записей на странице.
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Страница каналов сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelPageDto'
+
+components:
+  schemas:
+
+    CreateChannelRequest:
+      type: object
+      description: Данные для подключения бота к сервису.
+      required:
+        - serviceId
+        - platform
+        - token
+      properties:
+        serviceId:
+          type: string
+          format: uuid
+          description: Сервис, к которому подключается бот.
+        platform:
+          $ref: '#/components/schemas/ChannelPlatform'
+        token:
+          type: string
+          description: Токен бота, выданный платформой.
+          example: '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw'
+
+    UpdateChannelRequest:
+      type: object
+      description: Новый токен бота.
+      required:
+        - id
+        - token
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор канала.
+        token:
+          type: string
+          description: Новый токен того же бота, выданный платформой.
+          example: '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw'
+
+    ChannelDto:
+      type: object
+      description: Канал — бот сервиса на конкретной платформе.
+      required:
+        - id
+        - serviceId
+        - platform
+        - botUsername
+        - status
+        - created
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор канала.
+        serviceId:
+          type: string
+          format: uuid
+          description: Сервис, которому принадлежит канал.
+        platform:
+          $ref: '#/components/schemas/ChannelPlatform'
+        botUsername:
+          type: string
+          description: Имя бота на платформе, по нему клиенты находят бота.
+          example: santa_bot
+        status:
+          $ref: '#/components/schemas/ChannelStatus'
+        created:
+          type: string
+          format: date-time
+          description: Когда канал создан.
+          example: '2026-11-24T10:00:00Z'
+
+    ChannelPageDto:
+      type: object
+      description: Страница каналов сервиса.
+      required:
+        - items
+        - page
+        - size
+        - total
+      properties:
+        items:
+          type: array
+          description: Каналы на странице.
+          items:
+            $ref: '#/components/schemas/ChannelDto'
+        page:
+          type: integer
+          description: Номер страницы, начиная с 0.
+        size:
+          type: integer
+          description: Размер страницы.
+        total:
+          type: integer
+          description: Сколько всего каналов подходит под условия.
+
+    ChannelPlatform:
+      type: string
+      description: Платформа бота.
+      enum:
+        - telegram
+        - whatsapp
+        - vk
+        - max
+      example: telegram
+
+    ChannelStatus:
+      type: string
+      description: Состояние канала.
+      enum:
+        - active
+        - disabled
+      example: active
