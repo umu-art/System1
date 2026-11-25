@@ -1,0 +1,117 @@
+openapi: 3.1.0
+
+info:
+  title: Channels Gateway Api
+  description: Контракт сервиса s1-channels-gateway. Шлюз каналов связывает сервисы авторов с внешними платформами обмена сообщениями. Он хранит подключённых ботов, получает сообщения клиентов, определяет, к какому диалогу они относятся, и доставляет ответы обратно на платформы.
+  version: 1.0.0
+
+paths:
+  /api/channels-gateway/info:
+    get:
+      tags:
+        - channelsGateway
+      operationId: getChannelsGatewayInfo
+      summary: Получить имя сервиса и окружение, в котором он запущен
+      description: Служебный метод, чтобы проверить, что запрос дошёл до нужного сервиса в нужном окружении.
+      responses:
+        '200':
+          description: Сведения о сервисе
+          content:
+            application/json:
+              schema:
+                $ref: './common.yaml#/components/schemas/ServiceInfoDto'
+
+  /api/channels-gateway/channel:
+    post:
+      tags:
+        - channel
+      operationId: createChannel
+      summary: Подключить сервис к боту
+      description: Подключает сервис автора к боту на внешней платформе, чтобы сервис получал сообщения, которые клиенты пишут боту, и отвечал им через этого бота.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChannelRequest'
+      responses:
+        '201':
+          description: Канал создан, шлюз начал получать сообщения бота
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChannelDto'
+
+components:
+  schemas:
+
+    CreateChannelRequest:
+      type: object
+      description: Данные для подключения бота к сервису.
+      required:
+        - serviceId
+        - platform
+        - token
+      properties:
+        serviceId:
+          type: string
+          format: uuid
+          description: Сервис, к которому подключается бот.
+        platform:
+          type: string
+          description: Платформа бота.
+          enum:
+            - telegram
+            - whatsapp
+            - vk
+            - max
+          example: telegram
+        token:
+          type: string
+          description: Токен бота, выданный платформой.
+          example: '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw'
+
+    ChannelDto:
+      type: object
+      description: Канал — бот сервиса на конкретной платформе.
+      required:
+        - id
+        - serviceId
+        - platform
+        - botUsername
+        - status
+        - created
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Идентификатор канала.
+        serviceId:
+          type: string
+          format: uuid
+          description: Сервис, которому принадлежит канал.
+        platform:
+          type: string
+          description: Платформа бота.
+          enum:
+            - telegram
+            - whatsapp
+            - vk
+            - max
+          example: telegram
+        botUsername:
+          type: string
+          description: Имя бота на платформе, по нему клиенты находят бота.
+          example: santa_bot
+        status:
+          type: string
+          description: Состояние канала.
+          enum:
+            - active
+            - disabled
+          example: active
+        created:
+          type: string
+          format: date-time
+          description: Когда канал создан.
+          example: '2026-11-24T10:00:00Z'

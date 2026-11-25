@@ -1,0 +1,20 @@
+sources: "s1-channels-gateway.yaml"
+target: s1-channels-gateway-api
+generatorName: go-echo-server
+templateDir: config/go-echo-server-templates
+
+additionalProperties:
+  serverPort: '80'
+  packageName: 's1_channels_gateway_api'
+
+globalProperties:
+  apis: ''
+  models: ''
+  supportingFiles:
+    - go.mod
+    - main.go
+
+  modelTests: false
+  apiTests: false
+  modelDocs: false
+  apiDocs: false
