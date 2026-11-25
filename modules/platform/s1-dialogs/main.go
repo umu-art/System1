@@ -12,20 +12,9 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
-
-	"s1_dialogs_api/handlers"
-	"s1_dialogs_api/models"
 )
 
 const serviceName = "s1-dialogs"
-
-type handler struct {
-	env string
-}
-
-func (h *handler) GetDialogsInfo(ctx echo.Context) error {
-	return ctx.JSON(http.StatusOK, models.ServiceInfoDto{Service: serviceName, Env: h.env})
-}
 
 func main() {
 	logger, err := zap.NewProduction()
@@ -40,8 +29,6 @@ func main() {
 
 	e.GET("/healthz", health)
 	e.GET("/readyz", health)
-
-	handlers.RouteDialogsAPI(e, &handler{env: getenv("S1_ENV", "local")})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

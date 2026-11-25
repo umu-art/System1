@@ -5,6 +5,7 @@ templateDir: config/go-echo-server-templates
 
 additionalProperties:
   serverPort: '80'
+  enumClassPrefix: true
   packageName: 's1_channels_gateway_api'
 
 globalProperties:
