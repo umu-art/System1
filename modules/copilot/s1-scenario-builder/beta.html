@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>System1 · Копилот</title>
+<style>
+  :root{font:15px/1.5 Inter,system-ui,sans-serif;color:#242a22;background:#f6f6f1}
+  *{box-sizing:border-box}
+  body{margin:0}
+  header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #dfdfd6;padding:16px clamp(16px,4vw,56px);background:#fff}
+  header strong{letter-spacing:-.045em;font-size:23px}
+  button,textarea{font:inherit}
+  button{border:1px solid #cbcec3;border-radius:9px;padding:8px 12px;background:white;color:inherit;cursor:pointer}
+  button:disabled{opacity:.55;cursor:default}
+  main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;max-width:1440px;margin:auto;padding:24px clamp(16px,4vw,56px)}
+  section{border:1px solid #e0e1d8;border-radius:16px;background:white;padding:20px;min-width:0}
+  h1,h2,h3,p{margin:0;overflow-wrap:anywhere}
+  h1,h2{font-size:20px;letter-spacing:-.03em}
+  .chat{display:flex;flex-direction:column;min-height:540px;height:calc(100dvh - 120px)}
+  #messages{flex:1;overflow:auto;padding:20px 3px;display:flex;flex-direction:column;gap:14px}
+  .bubble{align-self:flex-start;max-width:92%;padding:10px 14px;border-radius:12px;background:#f0f1eb;white-space:pre-wrap}
+  .user{align-self:flex-end;background:#e4eedb}
+  form{display:grid;gap:8px;grid-template-columns:minmax(0,1fr) auto;align-items:end}
+  textarea{width:100%;padding:10px;border:1px solid #cbcec3;border-radius:9px;resize:vertical;min-height:65px}
+  .send{background:#253d26;color:white;border-color:#253d26}
+  .muted,small{color:#525e4e}
+  #status{margin:10px 0;min-height:1.5em}
+  #status.error{color:#a63129}
+  .side{align-self:start}
+  #revision{margin:6px 0 16px}
+  .card{padding:15px;margin:10px 0;border-radius:12px;background:#f7f8f3;border:1px solid #e3e6d9}
+  .card h3{font-size:17px;margin-bottom:10px}
+  .card p{margin:4px 0 10px}
+  details{margin-top:12px}
+  summary{cursor:pointer}
+  li{overflow-wrap:anywhere;margin-top:5px}
+  .views{display:flex;gap:6px;margin-bottom:10px}
+  [hidden]{display:none!important}
+  .views button[aria-pressed="true"]{background:#e4eedb;border-color:#a8b8a1}
+  .trace-group{margin-top:16px}
+  .trace-step{padding:12px 14px;border:1px solid #e3e6d9;border-radius:10px;margin-top:8px;background:#f7f8f3}
+  .trace-step summary{font-weight:600;overflow-wrap:anywhere}
+  .trace-step p{margin:8px 0}
+  .trace-step pre{max-height:360px;overflow:auto;background:#edf0e7;padding:10px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}
+  @media(max-width:720px){main{grid-template-columns:1fr}.chat{height:65dvh;min-height:350px}}
+</style>
+<header><strong>System1</strong><button id="new">Новый диалог</button></header>
+<main>
+  <section class="chat" aria-labelledby="chat-title">
+    <h1 id="chat-title">Чат с копилотом</h1>
+    <div id="messages" role="log" aria-label="Переписка"></div>
+    <p id="status" class="muted" role="status"></p>
+    <form id="composer">
+      <textarea id="input" aria-label="Сообщение" placeholder="Опиши, что должен делать сервис" required></textarea>
+      <button id="send" class="send">Отправить</button>
+    </form>
+  </section>
+  <section class="side" aria-label="Материалы копилота">
+    <div id="views" class="views" hidden>
+      <button id="map-button" type="button" aria-pressed="true" aria-controls="map">Сценарии</button>
+      <button id="trace-button" type="button" aria-pressed="false" aria-controls="pipeline">Пайплайн</button>
+    </div>
+    <div id="map">
+      <h2>Сценарии</h2>
+      <p id="revision" class="muted"></p>
+      <div id="cards"></div>
+    </div>
+    <div id="pipeline" hidden>
+      <h2>Пайплайн</h2>
+      <div id="trace"></div>
+    </div>
+  </section>
+</main>
+<script>
+  const el = id => document.getElementById(id);
+  const text = (tag, value, cls) => {
+    const node = document.createElement(tag);
+    node.textContent = value;
+    if (cls) node.className = cls;
+    return node;
+  };
+  let state;
+  let busy = false;
+  let activeView = "map";
+  const base = `${window.location.pathname.replace(/\/$/, "")}/beta/sessions`;
+
+  async function request(url, body) {
+    const options = body === undefined ? {} : {
+      method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body)
+    };
+    const response = await fetch(url, options);
+    const data = await response.json();
+    if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `HTTP ${response.status}`);
+    return data;
+  }
+
+  function render() {
+    const messages = el("messages");
+    messages.replaceChildren(...(state?.dialog ?? []).map(item =>
+      text("p", item.content, "bubble " + item.role)));
+    if (!messages.childElementCount) messages.append(text("p", "Расскажи, кто пользуется сервисом и что должен получить.", "muted"));
+    messages.scrollTop = messages.scrollHeight;
+    el("views").hidden = !Array.isArray(state?.trace);
+    selectView(el("views").hidden ? "map" : activeView);
+    renderTrace();
+    const cards = el("cards");
+    cards.replaceChildren();
+    const specification = state?.specification ?? state?.draft;
+    const validation = state?.validation ?? state?.review;
+    const issues = validation?.specification_issues ?? validation?.draft_issues ?? [];
+    const checked = validation && !issues.length && !validation.blocking_questions.length;
+    el("revision").textContent = specification ? `Редакция ${state.revision}${checked ? " · проверена" : ""}` : "Здесь появится карта, когда копилот соберёт спецификацию.";
+    if (!specification) return;
+    const {prd, workflows} = specification;
+    for (const workflow of workflows) {
+      const card = text("article", "", "card");
+      card.append(text("h3", workflow.title), text("small", "Вход"), text("p", workflow.trigger),
+        text("small", "Результат"), text("p", workflow.outcome));
+      const rules = text("details", "");
+      const list = text("ul", "");
+      for (const rule of prd.requirements.filter(rule => workflow.requirement_ids.includes(rule.id))) {
+        list.append(text("li", rule.text + (rule.source === "proposal" ? " · предложение" : "")));
+      }
+      rules.append(text("summary", "Связанные требования"), list);
+      card.append(rules);
+      cards.append(card);
+    }
+    if (validation) {
+      const notes = [...issues, ...validation.blocking_questions];
+      if (notes.length) {
+        const list = text("ul", "");
+        list.append(...notes.map(note => text("li", note)));
+        cards.append(text("h3", "Замечания к редакции"), list);
+      }
+    }
+  }
+
+  function selectView(view) {
+    activeView = view;
+    el("map").hidden = view !== "map";
+    el("pipeline").hidden = view !== "pipeline";
+    el("map-button").setAttribute("aria-pressed", String(view === "map"));
+    el("trace-button").setAttribute("aria-pressed", String(view === "pipeline"));
+  }
+
+  function renderTrace() {
+    const trace = el("trace");
+    trace.replaceChildren();
+    if (!state?.trace?.length) {
+      trace.append(text("p", "Действия появятся после ответа копилота.", "muted"));
+      return;
+    }
+    const owner = state.dialog.filter(item => item.role === "user");
+    let turn = 0;
+    let group;
+    let saved = false;
+    for (const event of state.trace) {
+      if (event.turn !== turn) {
+        turn = event.turn;
+        group = text("div", "", "trace-group");
+        group.append(text("h3", `Ход ${turn}`), text("p", owner[turn - 1]?.content ?? "", "muted"));
+        trace.append(group);
+      }
+      const {tool: recordedTool, arguments: args, result} = event;
+      const tool = {save_draft:"save_specification", review_draft:"validate_specification"}[recordedTool] ?? recordedTool;
+      let title;
+      let summary;
+      if (tool === "ask_owner") {
+        title = saved ? "Уточнение у владельца" : "Вопрос интервью";
+        summary = args?.question;
+      } else if (tool === "save_specification") {
+        title = result?.revision ? `Сохранена спецификация · редакция ${result.revision}` : "Сохранение спецификации";
+        if (result?.revision) saved = true;
+        summary = args?.workflows?.map(item => item.title).join(", ");
+      } else {
+        title = `Валидация редакции ${result?.revision ?? args?.revision ?? ""}`.trim();
+        const issues = (result?.specification_issues ?? result?.draft_issues ?? []).length;
+        const questions = result?.blocking_questions?.length ?? 0;
+        if (result && !result.error) summary = issues || questions
+          ? `Замечаний к спецификации — ${issues}. Вопросов владельцу — ${questions}.`
+          : "Валидация прошла без замечаний.";
+      }
+      const details = text("details", "", "trace-step");
+      details.append(text("summary", title + " · " + tool));
+      if (summary) details.append(text("p", summary));
+      if (result?.error) details.append(text("p", result.error));
+      if (tool === "validate_specification" && result && !result.error) {
+        const notes = [...(result.specification_issues ?? result.draft_issues ?? []), ...(result.blocking_questions ?? [])];
+        if (notes.length) {
+          const list = text("ul", "");
+          list.append(...notes.map(note => text("li", note)));
+          details.append(list);
+        }
+      }
+      details.append(text("small", "Аргументы и результат"),
+        text("pre", JSON.stringify({arguments: args, result}, null, 2)));
+      group.append(details);
+    }
+  }
+
+  el("map-button").onclick = () => selectView("map");
+  el("trace-button").onclick = () => selectView("pipeline");
+
+  async function update(action, pending) {
+    if (busy) return;
+    busy = true;
+    for (const id of ["new", "send", "input"]) el(id).disabled = true;
+    el("status").className = "muted";
+    el("status").textContent = pending;
+    try {
+      state = await action();
+      sessionStorage.setItem("system1-copilot", state.id);
+      el("status").textContent = "";
+      render();
+    } catch (error) {
+      el("status").className = "error";
+      el("status").textContent = error.message;
+    } finally {
+      busy = false;
+      el("new").disabled = false;
+      el("send").disabled = el("input").disabled = !state;
+      if (state) el("input").focus();
+    }
+  }
+
+  const create = () => request(base, {});
+  el("new").onclick = () => update(async () => {
+    const session = await create();
+    el("input").value = "";
+    return session;
+  }, "Открываю диалог…");
+  el("composer").onsubmit = event => {
+    event.preventDefault();
+    const message = el("input").value.trim();
+    if (!message || !state) return;
+    update(async () => {
+      const next = await request(`${base}/${state.id}/messages`, {text: message});
+      el("input").value = "";
+      return next;
+    }, "Копилот обрабатывает сообщение…");
+  };
+  render();
+  update(async () => {
+    const id = sessionStorage.getItem("system1-copilot");
+    if (id) {
+      const response = await fetch(`${base}/${encodeURIComponent(id)}`);
+      if (response.ok) return response.json();
+      if (response.status !== 404) throw new Error(`HTTP ${response.status}`);
+    }
+    return create();
+  }, "Открываю диалог…");
+</script>
+</html>

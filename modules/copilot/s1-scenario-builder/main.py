@@ -18,6 +18,12 @@ class ScenarioBuilderApi(BaseScenarioBuilderApi):
 app = FastAPI(title=SERVICE_NAME, docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(router)
 
+env = os.getenv("S1_ENV", "local")
+if env in ("local", "stage"):
+    from beta import router as beta_router
+
+    app.include_router(beta_router, prefix="/api/scenario-builder" if env == "stage" else "")
+
 
 @app.get("/healthz")
 @app.get("/readyz")
@@ -26,4 +32,5 @@ def health() -> dict[str, str]:
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+    host = "127.0.0.1" if os.getenv("S1_ENV", "local") == "local" else "0.0.0.0"
+    uvicorn.run(app, host=host, port=int(os.getenv("PORT", "8080")))
