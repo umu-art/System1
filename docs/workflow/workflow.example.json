@@ -1,0 +1,44 @@
+{
+  "blocks": [
+    {
+      "id": "voice.start",
+      "type": "command",
+      "metadata": "{\"command\": \"/voice\", \"scope\": \"entry\", \"next\": \"voice.prompt\"}"
+    },
+    {
+      "id": "voice.prompt",
+      "type": "send_message",
+      "metadata": "{\"text\": \"Пришлите текст для озвучки. Подойдёт от 5 до 200 символов.\", \"next\": \"voice.wait_text\"}"
+    },
+    {
+      "id": "voice.wait_text",
+      "type": "wait_message",
+      "metadata": "{\"saveAs\": \"text\", \"priority\": 10, \"resetAfterReceive\": true, \"next\": \"voice.check_length\"}"
+    },
+    {
+      "id": "voice.check_length",
+      "type": "condition",
+      "metadata": "{\"cases\": [{\"predicate\": \"lt\", \"ref\": \"input.text\", \"transform\": \"length\", \"value\": 5, \"next\": \"voice.retry\"}, {\"predicate\": \"gt\", \"ref\": \"input.text\", \"transform\": \"length\", \"value\": 200, \"next\": \"voice.retry\"}], \"default\": \"voice.generate\"}"
+    },
+    {
+      "id": "voice.retry",
+      "type": "send_message",
+      "metadata": "{\"text\": \"Длина текста должна быть от 5 до 200 символов. Пришлите другой текст.\", \"next\": \"voice.wait_text\"}"
+    },
+    {
+      "id": "voice.generate",
+      "type": "api",
+      "metadata": "{\"operation\": \"media.generate_audio\", \"args\": {\"text\": {\"ref\": \"input.text\"}}, \"saveAs\": \"audio\", \"next\": \"voice.deliver\", \"onError\": \"voice.failed\"}"
+    },
+    {
+      "id": "voice.deliver",
+      "type": "send_message",
+      "metadata": "{\"media\": {\"ref\": \"input.audio\"}}"
+    },
+    {
+      "id": "voice.failed",
+      "type": "send_message",
+      "metadata": "{\"text\": \"Озвучить текст не удалось. Чтобы попробовать ещё раз, отправьте /voice.\"}"
+    }
+  ]
+}

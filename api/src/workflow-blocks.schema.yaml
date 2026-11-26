@@ -1,0 +1,657 @@
+openapi: 3.1.0
+
+info:
+  title: Workflow Blocks Api
+  description: Схемы блока, типа блока и каталога. В примере каталога приведены правила проверки параметров всех восьми типов.
+  version: 1.0.0
+
+components:
+  schemas:
+    WorkflowBlockDto:
+      title: WorkflowBlockDto
+      type: object
+      description: Блок воркфлоу с параметрами из каталога типов.
+      required:
+        - id
+        - type
+        - metadata
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: Строковый идентификатор, уникальный в пределах воркфлоу. Регистр имеет значение.
+        type:
+          type: string
+          description: Тип блока из каталога.
+          minLength: 1
+          example: send_message
+        metadata:
+          type: string
+          contentMediaType: application/json
+          description: JSON-строка с объектом параметров и переходов блока. Формат объекта задаёт тип блока.
+
+    WorkflowBlockTypeDto:
+      title: WorkflowBlockTypeDto
+      type: object
+      description: Описание типа блока и схема его параметров.
+      required:
+        - type
+        - description
+        - schema
+      properties:
+        type:
+          type: string
+          description: Тип блока. Это значение указывается в WorkflowBlockDto.type.
+          example: send_message
+        description:
+          type: string
+          description: Назначение блока и его поведение при выполнении.
+        schema:
+          type: string
+          contentMediaType: application/json
+          description: JSON-строка со схемой Draft 2020-12 для объекта, полученного при разборе metadata.
+
+    WorkflowBlockCatalogDto:
+      title: WorkflowBlockCatalogDto
+      type: object
+      description: Каталог типов, которые принимает валидатор.
+      required:
+        - blockTypes
+      properties:
+        blockTypes:
+          type: array
+          description: Поддерживаемые типы блоков и их схемы.
+          items:
+            $ref: '#/components/schemas/WorkflowBlockTypeDto'
+
+  examples:
+    workflow-block-catalog-example:
+      summary: Восемь поддерживаемых типов блоков
+      value:
+        blockTypes:
+          - type: command
+            description: >-
+              Обрабатывает команду из чата или с кнопки. Например, /voice со значением entry в поле scope начинает
+              озвучку. Значение run позволяет кнопке продолжить тот запуск, в котором она появилась. Имя команды
+              уникально в пределах исполняемой редакции воркфлоу.
+            schema: |-
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "command": {
+                    "description": "Имя команды, по которому её находит диспетчер. То же имя используется в кнопке, вызывающей эту команду.",
+                    "type": "string",
+                    "pattern": "^/[a-z0-9_]{1,32}$"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "enum": [
+                      "entry",
+                      "run"
+                    ],
+                    "description": "Значение entry начинает запуск по текущей опубликованной редакции воркфлоу. Значение run продолжает исходный запуск по кнопке с сохранением его редакции."
+                  },
+                  "next": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID первого исполняемого блока после принятия команды."
+                  }
+                },
+                "required": [
+                  "command",
+                  "scope",
+                  "next"
+                ],
+                "additionalProperties": false,
+                "examples": [
+                  {
+                    "command": "/start",
+                    "next": "start.welcome",
+                    "scope": "entry"
+                  }
+                ]
+              }
+          - type: message_trigger
+            description: >-
+              Начинает запуск по тексту из личного чата, если сообщение не обработала команда или блок ожидания.
+              Следующие блоки могут прочитать исходный текст из event.text и, например, передать его оператору.
+            schema: |-
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "next": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID первого исполняемого блока после запуска по входящему тексту."
+                  }
+                },
+                "required": [
+                  "next"
+                ],
+                "additionalProperties": false,
+                "examples": [
+                  {
+                    "next": "inbox.ask_permission"
+                  }
+                ]
+              }
+          - type: send_message
+            description: >-
+              Отправляет сообщение с текстом (text) или медиафайлом (media). Укажите ровно одно из этих полей.
+              Кнопки прикрепляются к сообщению. После подтверждения доставки движок переходит к блоку next, если он
+              задан.
+            schema: |-
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Непустой текст, который получит пользователь."
+                  },
+                  "media": {
+                    "description": "Ссылка на объект медиа в контексте запуска, например input.video. Объект содержит kind со значением audio, video, image или document и строку url с адресом HTTP или HTTPS.",
+                    "type": "object",
+                    "properties": {
+                      "ref": {
+                        "description": "Путь к значению. Например, input.invoice.url читает URL из объекта счёта, сохранённого в input.invoice.",
+                        "type": "string",
+                        "pattern": "^(event\\.text|(input|state)\\.[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*)$"
+                      }
+                    },
+                    "required": [
+                      "ref"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "next": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID блока после подтверждения доставки. Без next движок ждёт нажатия кнопки, если хотя бы одна кнопка вызывает команду с областью действия run. Иначе запуск завершается."
+                  },
+                  "buttons": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "description": "Кнопка под сообщением. Содержит подпись text и одно действие, command или url. Порядок показа соответствует порядку кнопок в массиве.",
+                      "type": "object",
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "text": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "Подпись команды на кнопке."
+                            },
+                            "command": {
+                              "description": "Имя, совпадающее с полем command целевого блока command, например /generate.",
+                              "type": "string",
+                              "pattern": "^/[a-z0-9_]{1,32}$"
+                            }
+                          },
+                          "required": [
+                            "text",
+                            "command"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Кнопка вызывает команду из этого воркфлоу. При показе движок связывает токен команды с сообщением и диалогом. Для команды со scope run сохраняется связь с текущим запуском."
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "text": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "Подпись ссылки на кнопке."
+                            },
+                            "url": {
+                              "oneOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^(https?://|tg://).+",
+                                  "description": "Строка URL со схемой http, https или tg."
+                                },
+                                {
+                                  "description": "Ссылка на значение, которое при выполнении должно разрешиться в строку URL.",
+                                  "type": "object",
+                                  "properties": {
+                                    "ref": {
+                                      "description": "Путь к значению. Например, input.invoice.url читает URL из объекта счёта, сохранённого в input.invoice.",
+                                      "type": "string",
+                                      "pattern": "^(event\\.text|(input|state)\\.[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*)$"
+                                    }
+                                  },
+                                  "required": [
+                                    "ref"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ],
+                              "description": "Прямая ссылка или ссылка на строку в контексте запуска, например input.invoice.url."
+                            }
+                          },
+                          "required": [
+                            "text",
+                            "url"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Кнопка открывает ссылку в клиенте."
+                        }
+                      ]
+                    },
+                    "description": "Непустой список кнопок в порядке показа. Каждая кнопка вызывает команду или открывает ссылку."
+                  }
+                },
+                "additionalProperties": false,
+                "oneOf": [
+                  {
+                    "required": [
+                      "text"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "media"
+                    ]
+                  }
+                ],
+                "examples": [
+                  {
+                    "text": "Создадим видеопоздравление от Деда Мороза?",
+                    "buttons": [
+                      {
+                        "text": "Создать поздравление",
+                        "command": "/video"
+                      }
+                    ]
+                  }
+                ]
+              }
+          - type: wait_message
+            description: >-
+              Ждёт текст пользователя, сохраняет его и переходит к блоку next. Например, если saveAs имеет значение
+              text, следующий блок может прочитать реплику из input.text. Повторный вход в этот блок заменяет
+              предыдущее ожидание.
+            schema: |-
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "saveAs": {
+                    "description": "Имя переменной для сохранения текста. Например, greeting записывает полученную строку в input.greeting.",
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  },
+                  "next": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID блока, который выполняется сразу после записи принятого текста."
+                  },
+                  "priority": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Для свободного текста в личном чате выбирается ожидание с наибольшим приоритетом. При равном приоритете выбирается самое позднее ожидание, при равном времени — ожидание с наименьшим ID. Ответ на конкретное сообщение получает связанное с ним ожидание."
+                  },
+                  "resetAfterReceive": {
+                    "type": "boolean",
+                    "description": "При true ожидание закрывается после первого принятого текста. При false оно остаётся открытым и может принять следующие сообщения до закрытия ожидания или завершения запуска."
+                  }
+                },
+                "required": [
+                  "saveAs",
+                  "next",
+                  "priority",
+                  "resetAfterReceive"
+                ],
+                "additionalProperties": false,
+                "examples": [
+                  {
+                    "saveAs": "greeting",
+                    "next": "VIDEO.check_length",
+                    "priority": 10,
+                    "resetAfterReceive": true
+                  }
+                ]
+              }
+          - type: condition
+            description: >-
+              Проверяет условия в cases по порядку и переходит по next первого совпавшего условия. Если ни одно не
+              подошло, выполняется блок default. Например, две ветки могут вернуть слишком короткий и слишком
+              длинный текст на повторный ввод, а default — отправить текст допустимой длины на озвучку.
+            schema: |-
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "cases": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "description": "Одна ветка condition. Движок читает значение по ref, при наличии transform преобразует его, затем сравнивает результат с value. Истинное условие выбирает переход next.",
+                      "type": "object",
+                      "properties": {
+                        "ref": {
+                          "description": "Путь к значению, которое проверяется. Например, input.greeting для текста пользователя или state.generations_allowed для числа доступных генераций.",
+                          "type": "string",
+                          "pattern": "^(event\\.text|(input|state)\\.[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*)$"
+                        },
+                        "transform": {
+                          "type": "string",
+                          "const": "length",
+                          "description": "Необязательное преобразование перед сравнением. length считает кодовые точки строки, включая пробелы. Для него value должно быть неотрицательным целым числом."
+                        },
+                        "value": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "Литерал для сравнения. Для lt и gt требуется число. Для сравнения длины требуется неотрицательное целое."
+                        },
+                        "predicate": {
+                          "type": "string",
+                          "enum": [
+                            "eq",
+                            "lt",
+                            "gt"
+                          ],
+                          "description": "Оператор сравнения. eq проверяет равенство значений одного скалярного типа, lt — строго меньше, gt — строго больше. Например, для длины меньше 30 используйте length, lt и value 30."
+                        },
+                        "next": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "ID блока, который выполняется при истинном условии."
+                        }
+                      },
+                      "required": [
+                        "predicate",
+                        "ref",
+                        "value",
+                        "next"
+                      ],
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "if": {
+                            "properties": {
+                              "predicate": {
+                                "enum": [
+                                  "lt",
+                                  "gt"
+                                ]
+                              }
+                            }
+                          },
+                          "then": {
+                            "properties": {
+                              "value": {
+                                "type": "number"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "if": {
+                            "required": [
+                              "transform"
+                            ]
+                          },
+                          "then": {
+                            "properties": {
+                              "value": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "description": "Ветки в порядке проверки. Если движок не смог прочитать значение или вычислить условие, шаг завершается с ошибкой."
+                  },
+                  "default": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID блока, который выполняется, если все условия в cases ложны."
+                  }
+                },
+                "required": [
+                  "cases",
+                  "default"
+                ],
+                "additionalProperties": false,
+                "examples": [
+                  {
+                    "cases": [
+                      {
+                        "predicate": "eq",
+                        "ref": "state.is_generating",
+                        "value": true,
+                        "next": "video.busy"
+                      }
+                    ],
+                    "default": "VIDEO.ask_text"
+                  }
+                ]
+              }
+          - type: set_value
+            description: >-
+              Записывает заданный скалярный литерал в переменную запуска или в доступное поле состояния. Например,
+              можно записать true в input.confirmed и прочитать этот флаг в следующем condition.
+            schema: |-
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "ref": {
+                    "type": "string",
+                    "pattern": "^(input|state)\\.[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*$",
+                    "description": "Путь записи, например input.profile.name. Для вложенного пути input движок создаёт недостающие объекты. В state доступен для записи флаг state.is_generating у запуска, которому принадлежит резерв генерации."
+                  },
+                  "value": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ],
+                    "description": "Строка, число, логическое значение или null. При перезаписи существующего поля input сохраняется его JSON-тип. Для state.is_generating требуется логическое значение."
+                  },
+                  "next": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID следующего блока после успешной записи. Без next запуск завершается."
+                  }
+                },
+                "required": [
+                  "ref",
+                  "value"
+                ],
+                "additionalProperties": false,
+                "examples": [
+                  {
+                    "ref": "state.is_generating",
+                    "value": true,
+                    "next": "VIDEO.started"
+                  }
+                ]
+              }
+          - type: api
+            description: >-
+              Вызывает зарегистрированную операцию и ждёт её итогового результата. Например, для
+              media.generate_audio можно передать текст из input.text, а через saveAs сохранить результат в
+              input.audio для блока send_message. При успешном результате выполняется next, при ошибке используется
+              onError, если он задан.
+            schema: |-
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "operation": {
+                    "description": "Имя операции из реестра API движка.\n\n- billing.create_invoice принимает product и возвращает объект счёта.\n- billing.await_payment принимает invoiceId и ожидает итог оплаты по этому счёту.\n- media.generate_audio принимает text и возвращает объект аудио.\n- media.generate_lipsync принимает объект audio и возвращает объект видео.",
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$"
+                  },
+                  "args": {
+                    "description": "Именованные аргументы операции. Перед выполнением движок подставляет значения ссылок и проверяет типы. Например, text можно прочитать из input.greeting.",
+                    "type": "object",
+                    "propertyNames": {
+                      "description": "Имя аргумента длиной от 1 до 64 символов. Первый символ — латинская буква, далее допустимы латинские буквы, цифры и подчёркивание.",
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                    },
+                    "additionalProperties": {
+                      "description": "Аргумент операции задаётся литералом или объектом со ссылкой. Ссылка может вернуть целый объект, например input.audio для аргумента audio. Движок проверяет полученное значение по требованиям операции.",
+                      "oneOf": [
+                        {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "Литерал, передаваемый операции напрямую. Допустимы строка, число, логическое значение и null."
+                        },
+                        {
+                          "description": "Ссылка на значение, которое нужно прочитать из контекста запуска.",
+                          "type": "object",
+                          "properties": {
+                            "ref": {
+                              "description": "Путь к значению. Например, input.invoice.url читает URL из объекта счёта, сохранённого в input.invoice.",
+                              "type": "string",
+                              "pattern": "^(event\\.text|(input|state)\\.[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*)$"
+                            }
+                          },
+                          "required": [
+                            "ref"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "saveAs": {
+                    "description": "Имя переменной для итогового результата успешной операции. Например, invoice сохраняет объект счёта в input.invoice.",
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  },
+                  "next": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID блока после успешного завершения операции и сохранения результата, если задан saveAs. Если next отсутствует, запуск завершается."
+                  },
+                  "onError": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID блока обработки ошибки операции или подготовки её аргументов. При отсутствии onError ошибка завершает запуск."
+                  }
+                },
+                "required": [
+                  "operation",
+                  "args"
+                ],
+                "additionalProperties": false,
+                "examples": [
+                  {
+                    "operation": "billing.create_invoice",
+                    "args": {
+                      "product": "santa_video_credit"
+                    },
+                    "saveAs": "invoice",
+                    "next": "VIDEO.send_invoice",
+                    "onError": "VIDEO.payment_issue"
+                  }
+                ]
+              }
+          - type: action
+            description: >-
+              Выполняет операцию ядра System1 внутри текущего шага. Например, резервирует генерацию, обновляет
+              баланс или передаёт диалог сотруднику. Уведомления поддержки отправляются через очередь доставки.
+            schema: |-
+              {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "operation": {
+                    "description": "Имя операции из реестра действий движка.\n\n- generation.try_start пытается зарезервировать генерацию и возвращает true или false.\n- balance.credit_once зачисляет кредит по receipt, а balance.debit_once списывает кредит по резерву текущего запуска.\n- generation.finish и generation.fail освобождают резерв текущего запуска.\n- support.alert создаёт уведомление с reason, а support.handoff передаёт диалог сотруднику с description.",
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$"
+                  },
+                  "args": {
+                    "description": "Именованные аргументы операции. Передавайте пустой объект, если операция не принимает аргументов. Например, balance.credit_once может получить receipt по ссылке на input.receipt.",
+                    "type": "object",
+                    "propertyNames": {
+                      "description": "Имя аргумента длиной от 1 до 64 символов. Первый символ — латинская буква, далее допустимы латинские буквы, цифры и подчёркивание.",
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                    },
+                    "additionalProperties": {
+                      "description": "Аргумент операции задаётся литералом или объектом со ссылкой. Ссылка может вернуть целый объект, например input.audio для аргумента audio. Движок проверяет полученное значение по требованиям операции.",
+                      "oneOf": [
+                        {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "Литерал, передаваемый операции напрямую. Допустимы строка, число, логическое значение и null."
+                        },
+                        {
+                          "description": "Ссылка на значение, которое нужно прочитать из контекста запуска.",
+                          "type": "object",
+                          "properties": {
+                            "ref": {
+                              "description": "Путь к значению. Например, input.invoice.url читает URL из объекта счёта, сохранённого в input.invoice.",
+                              "type": "string",
+                              "pattern": "^(event\\.text|(input|state)\\.[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)*)$"
+                            }
+                          },
+                          "required": [
+                            "ref"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "saveAs": {
+                    "description": "Имя переменной для результата действия. Например, результат generation.try_start можно записать в input.reserved и проверить условием. У действий без возвращаемого результата записывается null.",
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+                  },
+                  "next": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID следующего блока после успешного действия. Без next запуск завершается."
+                  },
+                  "onError": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "ID блока обработки ошибки действия или подготовки его аргументов. При отсутствии onError ошибка завершает запуск."
+                  }
+                },
+                "required": [
+                  "operation",
+                  "args"
+                ],
+                "additionalProperties": false,
+                "examples": [
+                  {
+                    "operation": "balance.credit_once",
+                    "args": {
+                      "receipt": {
+                        "ref": "input.receipt"
+                      }
+                    },
+                    "next": "VIDEO.confirm",
+                    "onError": "VIDEO.payment_issue"
+                  }
+                ]
+              }

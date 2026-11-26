@@ -1,0 +1,416 @@
+openapi: 3.1.0
+
+info:
+  title: Workflow Validator Api
+  description: >-
+    Управление воркфлоу пользователя, проверка и сохранение блоков. Каталог типов описывает допустимые параметры
+    каждого блока.
+  version: 1.0.0
+
+paths:
+  /v1/workflow:
+    post:
+      tags:
+        - workflow
+      operationId: createWorkflow
+      summary: Создать воркфлоу
+      description: Владелец воркфлоу — авторизованный пользователь. В теле запроса передаётся только `serviceId`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkflowRequest'
+            example:
+              serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+      responses:
+        '201':
+          description: Воркфлоу создан.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowDto'
+              example:
+                workflowId: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
+                serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+    delete:
+      tags:
+        - workflow
+      operationId: deleteWorkflow
+      summary: Удалить воркфлоу
+      description: Удаляет воркфлоу авторизованного пользователя вместе с его блоками.
+      parameters:
+        - name: workflowId
+          in: query
+          required: true
+          schema:
+            type: string
+            description: UUID воркфлоу.
+            format: uuid
+          example: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
+      responses:
+        '200':
+          description: Воркфлоу удалён.
+
+  /v1/workflow/list:
+    get:
+      tags:
+        - workflow
+      operationId: listWorkflows
+      summary: Получить список воркфлоу текущего пользователя
+      description: Для каждого воркфлоу возвращает его `workflowId` и идентификатор связанного сервиса `serviceId`.
+      responses:
+        '200':
+          description: Воркфлоу пользователя.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowListDto'
+              example:
+                workflows:
+                  - workflowId: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
+                    serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+
+  /v1/workflow/{workflowId}:
+    parameters:
+      - $ref: '#/components/parameters/WorkflowId'
+    get:
+      tags:
+        - workflow
+      operationId: getWorkflow
+      summary: Получить воркфлоу
+      description: Возвращает сведения о воркфлоу, принадлежащем авторизованному пользователю.
+      responses:
+        '200':
+          description: Сведения о воркфлоу.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowDto'
+              example:
+                workflowId: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
+                serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+    put:
+      tags:
+        - workflow
+      operationId: updateWorkflow
+      summary: Изменить привязку воркфлоу к сервису
+      description: Меняет сервис, к которому привязан воркфлоу авторизованного пользователя.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkflowRequest'
+            example:
+              serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+      responses:
+        '200':
+          description: Привязка воркфлоу обновлена.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowDto'
+              example:
+                workflowId: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
+                serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+
+  /v1/workflow/{workflowId}/bulk/block:
+    parameters:
+      - $ref: '#/components/parameters/WorkflowId'
+    post:
+      tags:
+        - block
+      operationId: upsertWorkflowBlockBatch
+      summary: Проверить и сохранить батч блоков
+      description: |-
+        Передайте блоки целиком. У каждого блока в батче должен быть свой `id`.
+        Блок с новым `id` добавляется, а блок с существующим `id` целиком заменяет сохранённый.
+
+        Валидатор разбирает JSON-строку `metadata` каждого блока и проверяет полученный объект
+        по схеме его типа из каталога (`GET /v1/workflow/block/metadata`).
+        Каждый переход в `next`, `onError`, `default` или `cases[*].next` должен вести к блоку этого воркфлоу.
+        Цель может быть уже сохранена или находиться в любом месте того же батча.
+
+        Если все блоки прошли проверку, валидатор сохраняет их вместе. При ошибке отклоняет весь батч.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertWorkflowBlocksRequest'
+            examples:
+              complete-workflow:
+                summary: Воркфлоу озвучивания текста одним батчем
+                externalValue: ../../docs/workflow/workflow.example.json
+      responses:
+        '204':
+          description: Весь батч блоков сохранён.
+        '422':
+          description: Весь батч отклонён из-за ошибки разбора JSON в metadata или ошибки валидации блоков.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorDto'
+
+  /v1/workflow/{workflowId}/block:
+    parameters:
+      - $ref: '#/components/parameters/WorkflowId'
+    get:
+      tags:
+        - block
+      operationId: getWorkflowBlock
+      summary: Получить блок воркфлоу
+      parameters:
+        - $ref: '#/components/parameters/WorkflowBlockId'
+      responses:
+        '200':
+          description: Блок воркфлоу.
+          content:
+            application/json:
+              schema:
+                $ref: ./workflow-blocks.schema.yaml#/components/schemas/WorkflowBlockDto
+              example:
+                id: voice.wait_text
+                type: wait_message
+                metadata: |-
+                  {"saveAs": "text", "priority": 10, "resetAfterReceive": true, "next": "voice.check_length"}
+        '404':
+          description: Блок не найден среди доступных блоков указанного воркфлоу.
+    put:
+      tags:
+        - block
+      operationId: updateWorkflowBlock
+      summary: Заменить блок воркфлоу
+      description: >-
+        Блок выбирается по параметру запроса `blockId`. Передайте новые значения обоих полей — `type` и `metadata`.
+        Валидатор разбирает JSON-строку `metadata`, проверяет параметры по схеме типа блока
+        и проверяет переходы к сохранённым блокам этого воркфлоу.
+      parameters:
+        - $ref: '#/components/parameters/WorkflowBlockId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkflowBlockRequest'
+            example:
+              type: wait_message
+              metadata: |-
+                {"saveAs": "text", "priority": 20, "resetAfterReceive": true, "next": "voice.check_length"}
+      responses:
+        '200':
+          description: Блок обновлён.
+          content:
+            application/json:
+              schema:
+                $ref: ./workflow-blocks.schema.yaml#/components/schemas/WorkflowBlockDto
+              example:
+                id: voice.wait_text
+                type: wait_message
+                metadata: |-
+                  {"saveAs": "text", "priority": 20, "resetAfterReceive": true, "next": "voice.check_length"}
+        '404':
+          description: Блок не найден среди доступных блоков указанного воркфлоу.
+        '422':
+          description: Ошибка разбора JSON в metadata или ошибка проверки параметров и переходов блока.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorDto'
+    delete:
+      tags:
+        - block
+      operationId: deleteWorkflowBlock
+      summary: Удалить блок воркфлоу
+      description: Удаляет блок, когда на него нет ссылок из других блоков воркфлоу.
+      parameters:
+        - $ref: '#/components/parameters/WorkflowBlockId'
+      responses:
+        '200':
+          description: Блок удалён.
+        '404':
+          description: Блок не найден среди доступных блоков указанного воркфлоу.
+        '422':
+          description: На удаляемый блок ссылаются другие блоки воркфлоу.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorDto'
+
+  /v1/workflow/{workflowId}/block/list:
+    parameters:
+      - $ref: '#/components/parameters/WorkflowId'
+    get:
+      tags:
+        - block
+      operationId: listWorkflowBlocks
+      summary: Получить все блоки воркфлоу
+      responses:
+        '200':
+          description: Блоки воркфлоу.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowBlockListDto'
+              example:
+                blocks:
+                  - id: voice.start
+                    type: command
+                    metadata: |-
+                      {"command": "/voice", "scope": "entry", "next": "voice.prompt"}
+
+  /v1/workflow/block/metadata:
+    get:
+      tags:
+        - block
+      operationId: getWorkflowBlockMetadata
+      summary: Получить каталог типов блоков
+      description: >-
+        Для каждого типа поле `schema` содержит JSON Schema в виде строки. Билдер разбирает её, чтобы
+        сформировать параметры блока. Валидатор применяет схему к объекту, полученному из строки `metadata`.
+      responses:
+        '200':
+          description: Каталог типов и схемы параметров.
+          content:
+            application/json:
+              schema:
+                $ref: ./workflow-blocks.schema.yaml#/components/schemas/WorkflowBlockCatalogDto
+              examples:
+                supported-types:
+                  $ref: ./workflow-blocks.schema.yaml#/components/examples/workflow-block-catalog-example
+
+components:
+  parameters:
+    WorkflowId:
+      name: workflowId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        description: UUID воркфлоу.
+      example: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
+    WorkflowBlockId:
+      name: blockId
+      in: query
+      required: true
+      description: ID блока в указанном воркфлоу.
+      schema:
+        type: string
+        minLength: 1
+        description: ID блока с учётом регистра.
+      example: voice.wait_text
+
+  schemas:
+    CreateWorkflowRequest:
+      type: object
+      description: Привязка для нового воркфлоу.
+      required:
+        - serviceId
+      properties:
+        serviceId:
+          type: string
+          description: UUID сервиса, к которому привязан воркфлоу.
+          format: uuid
+
+    WorkflowDto:
+      type: object
+      description: Сведения о воркфлоу.
+      required:
+        - workflowId
+        - serviceId
+      properties:
+        workflowId:
+          type: string
+          description: UUID воркфлоу.
+          format: uuid
+        serviceId:
+          type: string
+          description: UUID сервиса, к которому привязан воркфлоу.
+          format: uuid
+
+    UpsertWorkflowBlocksRequest:
+      type: object
+      required:
+        - blocks
+      properties:
+        blocks:
+          type: array
+          description: Полные объекты новых и изменённых блоков с уникальными в батче ID.
+          minItems: 1
+          items:
+            $ref: ./workflow-blocks.schema.yaml#/components/schemas/WorkflowBlockDto
+
+    WorkflowBlockListDto:
+      type: object
+      required:
+        - blocks
+      properties:
+        blocks:
+          type: array
+          description: Полные объекты сохранённых блоков. Пустой массив соответствует воркфлоу без блоков.
+          items:
+            $ref: ./workflow-blocks.schema.yaml#/components/schemas/WorkflowBlockDto
+
+    UpdateWorkflowRequest:
+      type: object
+      description: Новая привязка существующего воркфлоу.
+      required:
+        - serviceId
+      properties:
+        serviceId:
+          type: string
+          description: UUID сервиса, к которому привязан воркфлоу.
+          format: uuid
+
+    WorkflowListDto:
+      type: object
+      description: Воркфлоу авторизованного пользователя.
+      required:
+        - workflows
+      properties:
+        workflows:
+          type: array
+          description: Воркфлоу авторизованного пользователя. Если у него ещё нет воркфлоу, массив пуст.
+          items:
+            $ref: '#/components/schemas/WorkflowDto'
+
+    UpdateWorkflowBlockRequest:
+      type: object
+      description: Параметры полной замены блока.
+      required:
+        - type
+        - metadata
+      properties:
+        type:
+          type: string
+          minLength: 1
+          description: Тип блока из каталога.
+          example: wait_message
+        metadata:
+          type: string
+          contentMediaType: application/json
+          description: JSON-строка с объектом параметров и переходов блока. Формат объекта задаёт тип блока.
+
+    ValidationErrorDto:
+      type: object
+      description: Ошибка валидации запроса.
+      required:
+        - error
+        - message
+        - metadata
+      properties:
+        error:
+          type: string
+          description: При ошибке валидации возвращается код VALIDATION_ERROR.
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          description: Сообщение о том, какие нарушения обнаружил валидатор.
+          example: Блок voice.wait_text ссылается на отсутствующий блок voice.missing.
+        metadata:
+          type: string
+          contentMediaType: application/json
+          description: JSON-строка с дополнительными сведениями об ошибке.
+          example: '{}'
