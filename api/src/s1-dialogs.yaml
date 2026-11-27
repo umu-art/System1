@@ -461,6 +461,52 @@ paths:
         '200':
           description: Результат отправки сохранён
 
+  /api/dialogs/message/take:
+    post:
+      tags:
+        - message
+      operationId: takeMessage
+      summary: Взять сообщение клиента в обработку
+      description: Движок берёт сообщение клиента, ID которого получил из RabbitMQ. Одно сообщение отдаётся только одному обработчику, сообщения одного клиента в диалоге — по порядку.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+      responses:
+        '200':
+          description: Сообщение взято в обработку
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageDto'
+        '404':
+          description: Сообщения нет, это не сообщение клиента или его диалог удалён. Обрабатывать не нужно.
+        '409':
+          description: Сообщение уже взято в обработку или обработано. Обрабатывать не нужно.
+        '423':
+          description: У этого клиента в диалоге есть более раннее необработанное сообщение. Повторить позже.
+
+  /api/dialogs/message/processed:
+    post:
+      tags:
+        - message
+      operationId: markMessageProcessed
+      summary: Отметить сообщение клиента обработанным
+      description: Движок сообщает, что сценарий по сообщению дошёл до терминального состояния. Повторный вызов ничего не меняет.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+      responses:
+        '200':
+          description: Сообщение отмечено обработанным
+        '404':
+          description: Сообщения нет или это не сообщение клиента.
+
 components:
   schemas:
 
@@ -811,6 +857,17 @@ components:
           description: Идентификатор сообщения на платформе, если отправка удалась.
           example: '4522'
 
+    MessageRequest:
+      type: object
+      description: Сообщение, к которому относится действие.
+      required:
+        - messageId
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          description: Идентификатор сообщения.
+
     MessageDto:
       type: object
       description: Сообщение диалога.
@@ -847,6 +904,9 @@ components:
         deliveryStatus:
           $ref: '#/components/schemas/MessageDeliveryStatus'
           description: Состояние отправки. Есть только у ответов сервиса.
+        processingStatus:
+          $ref: '#/components/schemas/MessageProcessingStatus'
+          description: Состояние обработки движком. Есть только у сообщений клиента.
         created:
           type: string
           format: date-time
@@ -892,6 +952,15 @@ components:
         - pending
         - sent
         - failed
+      example: pending
+
+    MessageProcessingStatus:
+      type: string
+      description: Состояние обработки сообщения клиента движком. pending — ждёт обработки, processing — взято в обработку, processed — обработано.
+      enum:
+        - pending
+        - processing
+        - processed
       example: pending
 
     MessageDeliveryResult:
