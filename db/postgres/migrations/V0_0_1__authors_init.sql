@@ -25,8 +25,7 @@ create table if not exists authors.services
     status      varchar(50)                 default 'active'           not null,
     removed     boolean                     default false              not null,
     constraint pk_services primary key (id),
-    constraint fk_services_on_author_id foreign key (author_id) references authors.authors on delete cascade,
-    constraint services_status_check check (status in ('active', 'disabled'))
+    constraint fk_services_on_author_id foreign key (author_id) references authors.authors on delete cascade
 );
 
 create unique index if not exists uk_authors_username on authors.authors (lower(username)) where not removed;
