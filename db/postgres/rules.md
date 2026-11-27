@@ -10,32 +10,29 @@
 db/postgres/
 ├── rules.md
 └── migrations/
-    ├── authors/                         одна папка на схему
-    │   └── V1__authors_init.sql
-    ├── dialogs/
-    │   └── V2__dialogs_init.sql
-    └── channels_gateway/
-        └── V3__channels_gateway_init.sql
+    ├── V0_0_1__baseline.sql
+    ├── V0_0_2__authors_init.sql
+    ├── V0_0_3__dialogs_init.sql
+    └── V0_0_4__channels_gateway_init.sql
 ```
-
-Какие папки есть в `migrations/`, такие схемы и есть в базе.
 
 ## Миграции
 
 | Что | Как |
 |---|---|
 | Инструмент | [Flyway](https://documentation.red-gate.com/flyway), чистый SQL |
-| Где лежат | `db/postgres/migrations/<схема>/` |
-| Имя файла | `V<версия>__<схема>_<описание>.sql`, например `V2__dialogs_init.sql` |
-| Версия | Целое число, одна сквозная нумерация на все схемы |
+| Где лежат | `db/postgres/migrations/`, все в одной папке |
+| Имя файла | `V{major}_{minor}_{patch}__{схема}_{описание}.sql`, например `V0_0_3__dialogs_init.sql` |
 | Таблица истории | `public.flyway_schema_history` |
+
+Миграции генерируем скиллом `pg-migration`, конвенции SQL (поля, типы, имена, индексы) — в нём.
 
 ## Правила
 
 - Сервис пишет только в свою схему, чужие схемы только читает. Чтобы изменить данные другого сервиса, вызывай его API.
-- Имя схемы — имя сервиса без `s1-`, дефисы заменяются подчёркиваниями: `s1-channels-gateway` → `channels_gateway`. Первая миграция новой схемы делает `CREATE SCHEMA`.
+- Имя схемы — имя сервиса без `s1-`, дефисы заменяются подчёркиваниями: `s1-channels-gateway` → `channels_gateway`. Первая миграция новой схемы делает `create schema`.
 - Одна миграция меняет только одну схему.
+- Внешний ключ на таблицу другой схемы — всегда `on delete restrict`.
 - Миграции только вперёд, откатывающих миграций не пишем. Миграцию, которая уже в master, не меняем.
 - Миграции не запускаются из кода сервиса.
-- В SQL таблица всегда пишется со схемой (`dialogs.client`), на `search_path` не полагаемся.
-- Имена таблиц и столбцов — в snake_case.
+- В SQL таблица всегда пишется со схемой (`dialogs.clients`), на `search_path` не полагаемся.
