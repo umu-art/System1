@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Dialogs Api
-  description: Контракт сервиса s1-dialogs. Сервис хранит клиентов и их диалоги с сервисами авторов, а шлюз каналов и автор работают с ними через этот API.
+  description: Контракт сервиса s1-dialogs. Сервис хранит клиентов и их диалоги с сервисами владельцев, а шлюз каналов и владелец работают с ними через этот API.
   version: 1.0.0
 
 paths:
@@ -51,7 +51,7 @@ paths:
         - client
       operationId: getClient
       summary: Получить клиента сервиса
-      description: Возвращает клиента сервиса автора вместе с его статусом в этом сервисе.
+      description: Возвращает клиента сервиса владельца вместе с его статусом в этом сервисе.
       parameters:
         - name: id
           in: query
@@ -66,7 +66,7 @@ paths:
           schema:
             type: string
             format: uuid
-            description: Сервис автора.
+            description: Сервис владельца.
       responses:
         '200':
           description: Клиент сервиса
@@ -81,7 +81,7 @@ paths:
         - client
       operationId: listClients
       summary: Получить клиентов сервиса
-      description: Возвращает клиентов сервиса автора постранично, новые первыми.
+      description: Возвращает клиентов сервиса владельца постранично, новые первыми.
       parameters:
         - name: serviceId
           in: query
@@ -89,19 +89,19 @@ paths:
           schema:
             type: string
             format: uuid
-            description: Сервис автора.
+            description: Сервис владельца.
         - name: blocked
           in: query
           required: false
           schema:
             type: boolean
-            description: Показать только заблокированных автором (true) или только незаблокированных (false) клиентов.
+            description: Показать только заблокированных владельцем (true) или только незаблокированных (false) клиентов.
         - name: restricted
           in: query
           required: false
           schema:
             type: boolean
-            description: Показать только клиентов, которых тариф автора не позволяет обслуживать (true), или только остальных (false).
+            description: Показать только клиентов, которых тариф владельца не позволяет обслуживать (true), или только остальных (false).
         - name: page
           in: query
           required: false
@@ -133,7 +133,7 @@ paths:
         - client
       operationId: blockClient
       summary: Заблокировать клиента в сервисе
-      description: Блокирует клиента в сервисе автора, сервис перестаёт ему отвечать.
+      description: Блокирует клиента в сервисе владельца, сервис перестаёт ему отвечать.
       requestBody:
         required: true
         content:
@@ -154,7 +154,7 @@ paths:
         - client
       operationId: unblockClient
       summary: Разблокировать клиента в сервисе
-      description: Снимает блокировку клиента в сервисе автора.
+      description: Снимает блокировку клиента в сервисе владельца.
       requestBody:
         required: true
         content:
@@ -195,7 +195,7 @@ paths:
         - dialog
       operationId: getDialog
       summary: Получить диалог сервиса
-      description: Возвращает диалог сервиса автора.
+      description: Возвращает диалог сервиса владельца.
       parameters:
         - name: id
           in: query
@@ -210,7 +210,7 @@ paths:
           schema:
             type: string
             format: uuid
-            description: Сервис автора.
+            description: Сервис владельца.
       responses:
         '200':
           description: Диалог
@@ -223,7 +223,7 @@ paths:
         - dialog
       operationId: deleteDialog
       summary: Удалить диалог сервиса
-      description: Удаляет диалог сервиса автора. Удаление мягкое — переписка сохраняется в базе, но диалог считается несуществующим. Клиент остаётся клиентом сервиса.
+      description: Удаляет диалог сервиса владельца. Удаление мягкое — переписка сохраняется в базе, но диалог считается несуществующим. Клиент остаётся клиентом сервиса.
       parameters:
         - name: id
           in: query
@@ -238,7 +238,7 @@ paths:
           schema:
             type: string
             format: uuid
-            description: Сервис автора.
+            description: Сервис владельца.
       responses:
         '204':
           description: Диалог удалён
@@ -249,7 +249,7 @@ paths:
         - dialog
       operationId: listDialogs
       summary: Получить диалоги сервиса
-      description: Возвращает диалоги сервиса автора постранично, сначала диалоги с самыми свежими сообщениями.
+      description: Возвращает диалоги сервиса владельца постранично, сначала диалоги с самыми свежими сообщениями.
       parameters:
         - name: serviceId
           in: query
@@ -257,7 +257,7 @@ paths:
           schema:
             type: string
             format: uuid
-            description: Сервис автора.
+            description: Сервис владельца.
         - name: clientId
           in: query
           required: false
@@ -388,7 +388,7 @@ paths:
           schema:
             type: string
             format: uuid
-            description: Сервис автора.
+            description: Сервис владельца.
       responses:
         '200':
           description: Сообщение
@@ -411,7 +411,7 @@ paths:
           schema:
             type: string
             format: uuid
-            description: Сервис автора.
+            description: Сервис владельца.
         - name: dialogId
           in: query
           required: false
@@ -460,6 +460,52 @@ paths:
       responses:
         '200':
           description: Результат отправки сохранён
+
+  /api/dialogs/message/take:
+    post:
+      tags:
+        - message
+      operationId: takeMessage
+      summary: Взять сообщение клиента в обработку
+      description: Движок берёт сообщение клиента, ID которого получил из RabbitMQ. Одно сообщение отдаётся только одному обработчику, сообщения одного клиента в диалоге — по порядку.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+      responses:
+        '200':
+          description: Сообщение взято в обработку
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageDto'
+        '404':
+          description: Сообщения нет, это не сообщение клиента или его диалог удалён. Обрабатывать не нужно.
+        '409':
+          description: Сообщение уже взято в обработку или обработано. Обрабатывать не нужно.
+        '423':
+          description: У этого клиента в диалоге есть более раннее необработанное сообщение. Повторить позже.
+
+  /api/dialogs/message/processed:
+    post:
+      tags:
+        - message
+      operationId: markMessageProcessed
+      summary: Отметить сообщение клиента обработанным
+      description: Движок сообщает, что сценарий по сообщению дошёл до терминального состояния. Повторный вызов ничего не меняет.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+      responses:
+        '200':
+          description: Сообщение отмечено обработанным
+        '404':
+          description: Сообщения нет или это не сообщение клиента.
 
 components:
   schemas:
@@ -552,7 +598,7 @@ components:
 
     ServiceClientRequest:
       type: object
-      description: Клиент в сервисе автора.
+      description: Клиент в сервисе владельца.
       required:
         - clientId
         - serviceId
@@ -564,11 +610,11 @@ components:
         serviceId:
           type: string
           format: uuid
-          description: Сервис автора.
+          description: Сервис владельца.
 
     ServiceClientDto:
       type: object
-      description: Клиент глазами автора сервиса — данные клиента и его статус в сервисе. Если blocked и restricted равны false, клиент пользуется сервисом без ограничений.
+      description: Клиент глазами владельца сервиса — данные клиента и его статус в сервисе. Если blocked и restricted равны false, клиент пользуется сервисом без ограничений.
       required:
         - clientId
         - serviceId
@@ -584,7 +630,7 @@ components:
         serviceId:
           type: string
           format: uuid
-          description: Сервис автора.
+          description: Сервис владельца.
         displayName:
           type: string
           description: Отображаемое имя.
@@ -603,11 +649,11 @@ components:
           example: masha@example.com
         blocked:
           type: boolean
-          description: Автор заблокировал клиента в сервисе.
+          description: Владелец заблокировал клиента в сервисе.
           example: false
         restricted:
           type: boolean
-          description: Тариф автора не позволяет обслуживать клиента.
+          description: Тариф владельца не позволяет обслуживать клиента.
           example: false
         created:
           type: string
@@ -811,6 +857,17 @@ components:
           description: Идентификатор сообщения на платформе, если отправка удалась.
           example: '4522'
 
+    MessageRequest:
+      type: object
+      description: Сообщение, к которому относится действие.
+      required:
+        - messageId
+      properties:
+        messageId:
+          type: string
+          format: uuid
+          description: Идентификатор сообщения.
+
     MessageDto:
       type: object
       description: Сообщение диалога.
@@ -847,6 +904,9 @@ components:
         deliveryStatus:
           $ref: '#/components/schemas/MessageDeliveryStatus'
           description: Состояние отправки. Есть только у ответов сервиса.
+        processingStatus:
+          $ref: '#/components/schemas/MessageProcessingStatus'
+          description: Состояние обработки движком. Есть только у сообщений клиента.
         created:
           type: string
           format: date-time
@@ -892,6 +952,15 @@ components:
         - pending
         - sent
         - failed
+      example: pending
+
+    MessageProcessingStatus:
+      type: string
+      description: Состояние обработки сообщения клиента движком. pending — ждёт обработки, processing — взято в обработку, processed — обработано.
+      enum:
+        - pending
+        - processing
+        - processed
       example: pending
 
     MessageDeliveryResult:
