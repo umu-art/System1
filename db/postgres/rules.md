@@ -10,7 +10,7 @@
 db/postgres/
 ├── rules.md
 └── migrations/
-    ├── V0_0_1__authors_init.sql
+    ├── V0_0_1__owners_init.sql
     ├── V0_0_2__dialogs_init.sql
     └── V0_0_3__channels_gateway_init.sql
 ```
@@ -36,3 +36,4 @@ db/postgres/
 - Миграции не запускаются из кода сервиса.
 - В SQL таблица всегда пишется со схемой (`dialogs.clients`), на `search_path` не полагаемся.
 - В миграциях не пишем `check` на перечисления, допустимые значения проверяет сервис.
+- В `comment on` не пишем конкретных примеров.
