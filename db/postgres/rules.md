@@ -10,10 +10,9 @@
 db/postgres/
 ├── rules.md
 └── migrations/
-    ├── V0_0_1__baseline.sql
-    ├── V0_0_2__authors_init.sql
-    ├── V0_0_3__dialogs_init.sql
-    └── V0_0_4__channels_gateway_init.sql
+    ├── V0_0_1__authors_init.sql
+    ├── V0_0_2__dialogs_init.sql
+    └── V0_0_3__channels_gateway_init.sql
 ```
 
 ## Миграции
@@ -22,7 +21,7 @@ db/postgres/
 |---|---|
 | Инструмент | [Flyway](https://documentation.red-gate.com/flyway), чистый SQL |
 | Где лежат | `db/postgres/migrations/`, все в одной папке |
-| Имя файла | `V{major}_{minor}_{patch}__{схема}_{описание}.sql`, например `V0_0_3__dialogs_init.sql` |
+| Имя файла | `V{major}_{minor}_{patch}__{схема}_{описание}.sql`, например `V0_0_2__dialogs_init.sql` |
 | Таблица истории | `public.flyway_schema_history` |
 
 Миграции генерируем скиллом `pg-migration`, конвенции SQL (поля, типы, имена, индексы) — в нём.
