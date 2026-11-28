@@ -19,3 +19,7 @@ patches:
       kind: Gateway
       name: system1-gateway
     path: patches/gateway.yaml
+  - target:
+      kind: ExternalSecret
+      name: s1-flyway-migrations
+    path: patches/flyway-secret.yaml

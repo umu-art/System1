@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: s1-flyway-migrations-
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: github-container-registry
+      containers:
+        - name: flyway
+          image: ghcr.io/umu-art/s1-flyway-migrations
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: s1-flyway-migrations

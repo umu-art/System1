@@ -37,3 +37,6 @@ db/postgres/
 - В SQL таблица всегда пишется со схемой (`dialogs.clients`), на `search_path` не полагаемся.
 - В миграциях не пишем `check` на перечисления, допустимые значения проверяет сервис.
 - В `comment on` не пишем конкретных примеров.
+
+При push в `master` или публикации тега `v*` CI собирает образ с SQL этого коммита и создаёт Job в namespace окружения. Результат миграции виден в статусе и логах Job.
+Для подключения нужны `FLYWAY_URL` (JDBC), `FLYWAY_USER` и `FLYWAY_PASSWORD` в Vault по пути `uno/<namespace>/s1-flyway-migrations`.
