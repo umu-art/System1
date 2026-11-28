@@ -4,9 +4,6 @@ metadata:
   name: system1
   namespace: argocd
 spec:
-  syncPolicy:
-    applicationsSync: create-update
-    preserveResourcesOnDeletion: true
   goTemplate: true
   goTemplateOptions:
     - missingkey=error
@@ -40,6 +37,8 @@ spec:
       namespace: argocd
       labels:
         app.kubernetes.io/instance: 'system1-{{ .env.path.basename }}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
     spec:
       destination:
         namespace: '{{ .namespace }}'

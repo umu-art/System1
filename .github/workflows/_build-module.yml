@@ -15,12 +15,16 @@ on:
         description: "Среда (python, go, node)"
         type: string
         required: true
+      env:
+        description: "Окружение из iac/envs (stage, prod)"
+        type: string
+        required: true
       test-only:
         description: "Только тесты, без сборки образа и деплоя (true на PR)"
         type: string
         required: true
       skip-rollout:
-        description: "Не передавать CronJob на шаг перезапуска Deployment"
+        description: "Пропустить перезапуск Deployment для CronJob"
         type: boolean
         default: false
 
@@ -33,7 +37,7 @@ jobs:
 
       - name: Detect changes
         id: filter
-        if: inputs.test-only == 'true'
+        if: inputs.env != 'prod'
         uses: dorny/paths-filter@v3
         with:
           filters: |
@@ -43,11 +47,11 @@ jobs:
               - 'iac/images/${{ inputs.name }}/**'
 
       - name: Prepare environment
-        if: inputs.test-only != 'true' || steps.filter.outputs.changed == 'true'
+        if: inputs.env == 'prod' || steps.filter.outputs.changed == 'true'
         uses: ./.github/workflows/actions/prepare_env
 
       - name: Run tests and build
-        if: inputs.test-only != 'true' || steps.filter.outputs.changed == 'true'
+        if: inputs.env == 'prod' || steps.filter.outputs.changed == 'true'
         uses: ./.github/workflows/actions/scripts
         with:
           script: ${{ inputs.script }}
@@ -56,28 +60,17 @@ jobs:
           test-only: ${{ inputs.test-only }}
 
       - name: Build Docker image
-        id: image
-        if: inputs.test-only != 'true'
+        if: (inputs.env == 'prod' || steps.filter.outputs.changed == 'true') && inputs.test-only != 'true'
         uses: ./.github/workflows/actions/build_image
         with:
           image: ${{ inputs.name }}
           actor: umu-art
           token: ${{ secrets.PACKAGES_TOKEN }}
 
-      - name: Record service image for release
-        if: inputs.test-only != 'true'
-        env:
-          SERVICE: ${{ inputs.name }}
-          DIGEST: ${{ steps.image.outputs.digest }}
-          SKIP_ROLLOUT: ${{ inputs.skip-rollout }}
-        run: printf '%s\n%s\n' "$DIGEST" "$SKIP_ROLLOUT" > "$RUNNER_TEMP/$SERVICE"
-
-      - name: Upload service image metadata
-        if: inputs.test-only != 'true'
-        uses: actions/upload-artifact@v4
+      - name: Deploy to stand
+        if: (inputs.env == 'prod' || steps.filter.outputs.changed == 'true') && inputs.test-only != 'true' && !inputs.skip-rollout
+        uses: ./.github/workflows/actions/deploy_to_stand
         with:
-          name: service-image-${{ inputs.name }}
-          path: ${{ runner.temp }}/${{ inputs.name }}
-          if-no-files-found: error
-          overwrite: true
-          retention-days: 7
+          kubesecret: ${{ secrets.KUBESECRET }}
+          module-name: ${{ inputs.name }}
+          env: ${{ inputs.env }}

@@ -12,11 +12,6 @@ inputs:
     description: 'token'
     required: true
 
-outputs:
-  digest:
-    description: Published image digest
-    value: ${{ steps.build.outputs.digest }}
-
 runs:
   using: "composite"
   steps:
@@ -27,11 +22,23 @@ runs:
         username: ${{ inputs.actor }}
         password: ${{ inputs.token }}
 
+    - name: Extract metadata for ${{ inputs.image }}
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ inputs.actor }}/${{ inputs.image }}
+        flavor: |
+          latest=false
+        tags: |
+          type=ref,event=branch
+          type=ref,event=tag
+          type=raw,value=prod,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+
     - name: Build and push Docker image for ${{ inputs.image }}
-      id: build
       uses: docker/build-push-action@v6
       with:
         context: .
         file: ./iac/images/${{ inputs.image }}/Dockerfile
         push: true
-        tags: ghcr.io/${{ inputs.actor }}/${{ inputs.image }}:sha-${{ github.sha }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}

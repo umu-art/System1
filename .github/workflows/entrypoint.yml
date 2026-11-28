@@ -11,10 +11,6 @@ on:
       - master
   workflow_dispatch:
 
-concurrency:
-  group: system1-${{ github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/v') && 'prod' || 'stage') || github.ref }}
-  cancel-in-progress: false
-
 jobs:
   build:
     name: Build (${{ matrix.name }})
@@ -57,182 +53,23 @@ jobs:
       module: ${{ matrix.module }}
       name: ${{ matrix.name }}
       script: ${{ matrix.script }}
+      env: ${{ startsWith(github.ref, 'refs/tags/v') && 'prod' || 'stage' }}
       test-only: ${{ (github.event_name != 'push' || (matrix.prod-only && !startsWith(github.ref, 'refs/tags/v'))) && 'true' || 'false' }}
       skip-rollout: ${{ matrix.cronjob == true }}
     secrets: inherit
 
-  build-migrations:
-    name: Build and test Flyway Migrations
-    runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.publish.outputs.image }}
-    env:
-      IMAGE: ghcr.io/umu-art/s1-flyway-migrations:sha-${{ github.sha }}
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: system1
-          POSTGRES_PASSWORD: test-postgres
-        ports:
-          - 5432/tcp
-        options: >-
-          --health-cmd "pg_isready -U postgres -d system1"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Test release wiring
-        run: |
-          python3 -m pip install PyYAML
-          python3 iac/jobs/s1-flyway-migrations/tests/test_release.py
-
-      - name: Build Flyway image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: iac/images/s1-flyway-migrations/Dockerfile
-          load: true
-          tags: ${{ env.IMAGE }}
-
-      - name: Test migrations and rerun against temporary PostgreSQL
-        env:
-          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
-          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
-        run: bash iac/jobs/s1-flyway-migrations/tests/test_postgres.sh
-
-      - name: Log in to GHCR
-        if: github.event_name == 'push'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: umu-art
-          password: ${{ secrets.PACKAGES_TOKEN }}
-
-      - name: Publish tested Flyway image
-        if: github.event_name == 'push'
-        id: publish
-        run: |
-          docker push "$IMAGE"
-          digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE")
-          echo "image=$digest" >> "$GITHUB_OUTPUT"
-
-  release:
-    name: Migrate and deploy
+  sync-iac:
+    name: Sync IaC (ArgoCD)
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    needs:
-      - build
-      - build-migrations
-    env:
-      DEPLOY_ENV: ${{ startsWith(github.ref, 'refs/tags/v') && 'prod' || 'stage' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Verify release is current
-        run: |
-          if [[ "$DEPLOY_ENV" == prod ]]; then
-            tags=$(git ls-remote --tags --refs --sort=-version:refname origin 'refs/tags/v*')
-            read -r _ latest <<< "$tags"
-            [[ "$GITHUB_REF" == "$latest" && "$GITHUB_REF_NAME" =~ ^v[A-Za-z0-9_.-]{0,127}$ ]] || {
-              echo "Refusing to deploy non-current or invalid release tag: $GITHUB_REF" >&2
-              exit 1
-            }
-          fi
-          refs=$(git ls-remote --exit-code origin "$GITHUB_REF" "${GITHUB_REF}^{}")
-          grep -q "^${GITHUB_SHA}"$'\t' <<< "$refs" || {
-            echo 'Release ref no longer points to this commit' >&2
-            exit 1
-          }
-
-      - name: Set Kubernetes context
-        uses: azure/k8s-set-context@v4
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBESECRET }}
-
-      - name: Resolve deployment namespace
-        id: target
-        run: echo "namespace=$(yq '.namespace' "iac/envs/$DEPLOY_ENV/env.yaml")" >> "$GITHUB_OUTPUT"
-
-      - name: Download published service image metadata
-        uses: actions/download-artifact@v4
-        with:
-          pattern: service-image-*
-          path: ${{ runner.temp }}/system1-images
-          merge-multiple: true
-
-      - name: Wait for previous ArgoCD operations
-        uses: clowdhaus/argo-cd-action/@main
-        with:
-          version: 3.1.5
-          options: --server ${{ secrets.ARGOCD_SERVER }} --grpc-web --auth-token ${{ secrets.ARGOCD_TOKEN }}
-          command: app wait -l app.kubernetes.io/instance=system1-${{ env.DEPLOY_ENV }} --operation --timeout 120
-
-      - name: Apply database migrations
-        env:
-          NAMESPACE: ${{ steps.target.outputs.namespace }}
-          IMAGE: ${{ needs.build-migrations.outputs.image }}
-        run: |
-          bash iac/jobs/s1-flyway-migrations/run.sh "$NAMESPACE" "$IMAGE" "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-
-      - name: Log in to GHCR for service promotion
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: umu-art
-          password: ${{ secrets.PACKAGES_TOKEN }}
-
-      - name: Promote service images
-        run: |
-          shopt -s nullglob
-          markers=("$RUNNER_TEMP"/system1-images/s1-*)
-          (( ${#markers[@]} > 0 )) || { echo 'No service images were downloaded' >&2; exit 1; }
-          tag=master
-          [[ "$DEPLOY_ENV" != prod ]] || tag=prod
-          for marker in "${markers[@]}"; do
-            service=${marker##*/}
-            read -r digest < "$marker"
-            [[ "$service" =~ ^s1-[a-z0-9-]+$ && "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
-              echo 'Invalid service image metadata' >&2
-              exit 1
-            }
-            image="ghcr.io/umu-art/$service"
-            tags=(--tag "$image:$tag")
-            if [[ "$DEPLOY_ENV" == prod ]]; then tags+=(--tag "$image:$GITHUB_REF_NAME"); fi
-            docker buildx imagetools create --prefer-index=false "${tags[@]}" "$image@$digest"
-          done
-
-      - name: Sync ArgoCD
+      - name: Sync
         uses: ./.github/workflows/actions/argo_sync
         with:
           argocd-server: ${{ secrets.ARGOCD_SERVER }}
           argocd-token: ${{ secrets.ARGOCD_TOKEN }}
-          instance: system1-${{ env.DEPLOY_ENV }}
-          revision: ${{ github.sha }}
-
-      - name: Restart updated Deployments
-        env:
-          NAMESPACE: ${{ steps.target.outputs.namespace }}
-        run: |
-          shopt -s nullglob
-          deployments=()
-          for marker in "$RUNNER_TEMP"/system1-images/s1-*; do
-            [[ "$(sed -n '2p' "$marker")" == false ]] || continue
-            deployments+=("deployment/${marker##*/}")
-          done
-          (( ${#deployments[@]} == 0 )) || kubectl --namespace "$NAMESPACE" rollout restart "${deployments[@]}"
-          for deployment in "${deployments[@]}"; do
-            kubectl --namespace "$NAMESPACE" rollout status "$deployment" --timeout=300s
-          done
-
-      - name: Wait for ArgoCD health
-        uses: clowdhaus/argo-cd-action/@main
-        with:
-          version: 3.1.5
-          options: --server ${{ secrets.ARGOCD_SERVER }} --grpc-web --auth-token ${{ secrets.ARGOCD_TOKEN }}
-          command: app wait -l app.kubernetes.io/instance=system1-${{ env.DEPLOY_ENV }} --health --timeout 600
+          instance: system1-${{ startsWith(github.ref, 'refs/tags/v') && 'prod' || 'stage' }}

@@ -38,6 +38,5 @@ db/postgres/
 - В миграциях не пишем `check` на перечисления, допустимые значения проверяет сервис.
 - В `comment on` не пишем конкретных примеров.
 
-## Раскатка
-
-Миграции запускает одноразовый Kubernetes Job [s1-flyway-migrations](../../iac/jobs/s1-flyway-migrations/README.md) до синхронизации и перезапуска сервисов. Все схемы одной БД мигрируются одним запуском Flyway.
+При push в `master` или публикации тега `v*` CI собирает образ с SQL этого коммита и создаёт Job в namespace окружения. Результат миграции виден в статусе и логах Job.
+Для подключения нужны `FLYWAY_URL` (JDBC), `FLYWAY_USER` и `FLYWAY_PASSWORD` в Vault по пути `uno/<namespace>/s1-flyway-migrations`.

@@ -2,3 +2,4 @@ resources:
   - config.yaml
   - gateway.yaml
   - pull-secret.yaml
+  - flyway-secret.yaml
