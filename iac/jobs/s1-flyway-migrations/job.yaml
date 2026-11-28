@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: s1-flyway-migrations-
+  labels:
+    app.kubernetes.io/name: s1-flyway-migrations
+    s1/release-run: '__RUN_KEY__'
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: github-container-registry
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: flyway
+          image: __IMAGE__
+          args:
+            - migrate
+          env:
+            - name: FLYWAY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: s1-flyway-migrations
+                  key: FLYWAY_URL
+            - name: FLYWAY_USER
+              valueFrom:
+                secretKeyRef:
+                  name: s1-flyway-migrations
+                  key: FLYWAY_USER
+            - name: FLYWAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: s1-flyway-migrations
+                  key: FLYWAY_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
