@@ -58,6 +58,43 @@ jobs:
       skip-rollout: ${{ matrix.cronjob == true }}
     secrets: inherit
 
+  flyway-migrations:
+    name: Flyway migrations
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/umu-art/s1-flyway-migrations:${{ github.sha }}
+      STAND: ${{ startsWith(github.ref, 'refs/tags/v') && 'prod' || 'stage' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: umu-art
+          password: ${{ secrets.PACKAGES_TOKEN }}
+
+      - name: Build and push Flyway image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: iac/images/s1-flyway-migrations/Dockerfile
+          tags: ${{ env.IMAGE }}
+          pull: true
+          push: true
+
+      - uses: azure/k8s-set-context@v4
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBESECRET }}
+
+      - name: Create migration Job
+        shell: bash
+        run: |
+          namespace=$(yq -r '.namespace' "iac/envs/$STAND/env.yaml")
+          kubectl set image --local -f iac/jobs/s1-flyway-migrations/job.yaml "flyway=$IMAGE" -o yaml |
+            kubectl create -n "$namespace" -f -
+
   sync-iac:
     name: Sync IaC (ArgoCD)
     runs-on: ubuntu-latest
