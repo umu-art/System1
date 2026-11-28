@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: s1-channels-gateway
+  labels:
+    app: s1-channels-gateway
+spec:
+  selector:
+    app: s1-channels-gateway
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP

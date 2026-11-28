@@ -1,0 +1,30 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - revive
+    - gocritic
+  exclusions:
+    rules:
+      - linters:
+          - revive
+        text: "^exported:"
+      - linters:
+          - revive
+        text: "^package-comments:"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - system1/platform
+        - s1_dialogs_api
+        - s1_channels_gateway_api

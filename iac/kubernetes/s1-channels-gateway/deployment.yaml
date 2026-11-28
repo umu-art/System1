@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s1-channels-gateway
+  labels:
+    app: s1-channels-gateway
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: s1-channels-gateway
+  template:
+    metadata:
+      labels:
+        app: s1-channels-gateway
+    spec:
+      containers:
+        - name: s1-channels-gateway
+          image: ghcr.io/umu-art/s1-channels-gateway
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 8080
+
+          envFrom:
+            - configMapRef:
+                name: s1-env
+            - secretRef:
+                name: s1-channels-gateway
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "50M"
+            limits:
+              memory: "100M"
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+
+      imagePullSecrets:
+        - name: github-container-registry
+
+      restartPolicy: Always
