@@ -26,6 +26,10 @@ jobs:
             name: s1-workflow
             script: go
 
+          - module: modules/scenario
+            name: s1-workflow-validator
+            script: go
+
           - module: modules/tools
             name: s1-material-collector
             script: go

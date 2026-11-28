@@ -1,0 +1,15 @@
+sources: s1-workflow-validator.yaml
+target: s1-workflow-validator-client
+generatorName: go
+gitHost: github.com
+gitUserId: umu-art
+gitRepoId: System1/api/build/s1-workflow-validator-client
+
+additionalProperties:
+  packageName: workflowvalidator
+
+globalProperties:
+  modelTests: false
+  apiTests: false
+  modelDocs: false
+  apiDocs: false

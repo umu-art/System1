@@ -24,6 +24,10 @@ spec:
             - name: http
               containerPort: 8080
 
+          env:
+            - name: WORKFLOW_VALIDATOR_URL
+              value: http://s1-workflow-validator
+
           envFrom:
             - configMapRef:
                 name: s1-env
