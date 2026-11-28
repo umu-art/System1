@@ -9,8 +9,11 @@ spec:
   rules:
     - matches:
         - path:
-            type: PathPrefix
-            value: /api/workflow
+            type: Exact
+            value: /api/workflow/info
+        - path:
+            type: Exact
+            value: /api/workflow/validate
       backendRefs:
         - name: s1-workflow
           port: 80

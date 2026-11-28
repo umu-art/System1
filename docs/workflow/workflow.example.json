@@ -27,13 +27,13 @@
     },
     {
       "id": "voice.generate",
-      "type": "api",
-      "metadata": "{\"operation\": \"media.generate_audio\", \"args\": {\"text\": {\"ref\": \"input.text\"}}, \"saveAs\": \"audio\", \"next\": \"voice.deliver\", \"onError\": \"voice.failed\"}"
+      "type": "generate_audio",
+      "metadata": "{\"model\": \"tts-example\", \"input\": [{\"type\": \"text\", \"value\": {\"ref\": \"voice.wait_text.result.text\"}}], \"next\": \"voice.deliver\", \"onError\": \"voice.failed\"}"
     },
     {
       "id": "voice.deliver",
       "type": "send_message",
-      "metadata": "{\"media\": {\"ref\": \"input.audio\"}}"
+      "metadata": "{\"media\": {\"ref\": \"voice.generate.result\"}}"
     },
     {
       "id": "voice.failed",

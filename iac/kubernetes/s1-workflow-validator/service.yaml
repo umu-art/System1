@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: s1-workflow-validator
+  labels:
+    app: s1-workflow-validator
+spec:
+  selector:
+    app: s1-workflow-validator
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP

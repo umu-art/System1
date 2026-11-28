@@ -6,6 +6,19 @@ info:
   version: 1.0.0
 
 components:
+  parameters:
+    TemporaryUserId:
+      name: userId
+      in: query
+      required: false
+      description: >-
+        Временный UUID владельца для тестов до введения аутентификации. При отсутствии параметра
+        используется тестовый владелец по умолчанию. Явное значение должно быть непустым ненулевым UUID.
+      schema:
+        type: string
+        format: uuid
+        default: 00000000-0000-0000-0000-000000000001
+
   schemas:
 
     ServiceInfoDto:

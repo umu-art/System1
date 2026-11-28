@@ -25,7 +25,9 @@ paths:
       tags:
         - workflow
       operationId: validateScenario
-      summary: Проверить, что движок сможет исполнить сценарий
+      summary: Устаревшая ручка проверки сценария
+      description: Для проверки и сохранения блоков используйте API валидатора.
+      deprecated: true
       requestBody:
         required: true
         content:
@@ -35,3 +37,204 @@ paths:
       responses:
         '204':
           description: Сценарий корректен
+        '501':
+          description: Устаревшая ручка. Валидация выполняется через API валидатора.
+
+  /api/workflow/runs:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
+    post:
+      tags:
+        - workflow
+      operationId: startWorkflowRun
+      summary: Запустить сохранённый воркфлоу
+      description: >-
+        Исполнитель сохраняет снимок графа и исполняет его до ожидания события или завершения.
+        Повтор того же запроса с тем же runId возвращает текущее состояние запуска.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartWorkflowRunRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/WorkflowRun'
+        '400':
+          description: Некорректные параметры запроса.
+        '404':
+          description: Воркфлоу или входной блок недоступен.
+        '409':
+          description: С этим runId уже сохранён запуск с другими параметрами.
+        '422':
+          description: Блок не является входом или граф не может быть исполнен.
+        '502':
+          description: Валидатор не ответил корректно.
+
+  /api/workflow/runs/{runId}:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
+      - $ref: '#/components/parameters/RunId'
+    get:
+      tags:
+        - workflow
+      operationId: getWorkflowRun
+      summary: Получить состояние запуска
+      responses:
+        '200':
+          $ref: '#/components/responses/WorkflowRun'
+        '400':
+          description: Некорректный идентификатор запуска.
+        '404':
+          description: Запуск не найден.
+
+  /api/workflow/runs/{runId}/events:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
+      - $ref: '#/components/parameters/RunId'
+    post:
+      tags:
+        - workflow
+      operationId: acceptWorkflowRunEvent
+      summary: Продолжить ожидающий запуск
+      description: >-
+        Передайте сообщение или статус платежа, который ожидает текущий блок.
+        Повтор уже принятого события с тем же содержимым возвращает текущее состояние.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowRunEventRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/WorkflowRun'
+        '400':
+          description: Некорректное событие.
+        '404':
+          description: Запуск не найден.
+        '409':
+          description: Запуск ожидает другое событие или eventId уже использован для другого содержимого.
+
+components:
+  responses:
+    WorkflowRun:
+      description: Текущее сохранённое состояние запуска.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/WorkflowRunDto'
+
+  parameters:
+    RunId:
+      name: runId
+      in: path
+      required: true
+      description: Идентификатор запуска.
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    StartWorkflowRunRequest:
+      type: object
+      required:
+        - runId
+        - workflowId
+        - entryBlockId
+      properties:
+        runId:
+          type: string
+          format: uuid
+          description: UUID, который клиент сохраняет при повторе запроса.
+        workflowId:
+          type: string
+          format: uuid
+          description: Идентификатор сохранённого воркфлоу.
+        entryBlockId:
+          type: string
+          minLength: 1
+          description: ID входного блока command со scope entry либо wait_message.
+
+    WorkflowRunEventRequest:
+      type: object
+      required:
+        - eventId
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Идентификатор события в этом запуске.
+        text:
+          type: string
+          minLength: 1
+          description: Текст принятого сообщения.
+        paymentId:
+          type: string
+          minLength: 1
+          description: Идентификатор платежа из ожидающего блока.
+        paymentStatus:
+          $ref: '#/components/schemas/WorkflowPaymentStatus'
+      oneOf:
+        - required:
+            - text
+        - required:
+            - paymentId
+            - paymentStatus
+      dependentRequired:
+        paymentId:
+          - paymentStatus
+        paymentStatus:
+          - paymentId
+
+    WorkflowPaymentStatus:
+      type: string
+      enum:
+        - succeeded
+        - canceled
+      description: Окончательный статус платежа.
+
+    WorkflowRunDto:
+      type: object
+      required:
+        - runId
+        - workflowId
+        - status
+        - input
+        - state
+        - results
+        - messages
+      properties:
+        runId:
+          type: string
+          format: uuid
+        workflowId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          description: waiting_message, waiting_payment, completed или failed.
+        blockId:
+          type: string
+          description: ID текущего блока ожидания или блока, завершившегося ошибкой.
+        error:
+          type: string
+          description: Причина остановки при статусе failed.
+        input:
+          type: object
+          description: Входные значения текущего запуска.
+          additionalProperties: true
+        state:
+          type: object
+          description: Переменные текущего запуска.
+          additionalProperties: true
+        results:
+          type: object
+          description: Результаты блоков по их ID.
+          additionalProperties: true
+        messages:
+          type: array
+          description: Сообщения, сформированные исполнителем в порядке отправки.
+          items:
+            type: object
+            additionalProperties: true

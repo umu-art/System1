@@ -4,17 +4,19 @@ info:
   title: Workflow Validator Api
   description: >-
     Управление воркфлоу пользователя, проверка и сохранение блоков. Каталог типов описывает допустимые параметры
-    каждого блока.
+    каждого блока. Временный параметр `userId` позволяет выбрать владельца. По умолчанию используется тестовый владелец.
   version: 1.0.0
 
 paths:
   /v1/workflow:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
     post:
       tags:
         - workflow
       operationId: createWorkflow
       summary: Создать воркфлоу
-      description: Владелец воркфлоу — авторизованный пользователь. В теле запроса передаётся только `serviceId`.
+      description: Владелец воркфлоу определяется по временному параметру `userId`. В теле запроса передаётся только `serviceId`.
       requestBody:
         required: true
         content:
@@ -33,12 +35,17 @@ paths:
               example:
                 workflowId: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
                 serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+        '400':
+          description: Некорректные параметры запроса.
+        '404':
+          description: Воркфлоу, блок или сервис недоступен владельцу.
+
     delete:
       tags:
         - workflow
       operationId: deleteWorkflow
       summary: Удалить воркфлоу
-      description: Удаляет воркфлоу авторизованного пользователя вместе с его блоками.
+      description: Удаляет воркфлоу владельца из `userId` вместе с его блоками.
       parameters:
         - name: workflowId
           in: query
@@ -51,8 +58,14 @@ paths:
       responses:
         '200':
           description: Воркфлоу удалён.
+        '400':
+          description: Некорректные параметры запроса.
+        '404':
+          description: Воркфлоу, блок или сервис недоступен владельцу.
 
   /v1/workflow/list:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
     get:
       tags:
         - workflow
@@ -70,16 +83,19 @@ paths:
                 workflows:
                   - workflowId: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
                     serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+        '400':
+          description: Некорректное или повторно указанное значение userId.
 
   /v1/workflow/{workflowId}:
     parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
       - $ref: '#/components/parameters/WorkflowId'
     get:
       tags:
         - workflow
       operationId: getWorkflow
       summary: Получить воркфлоу
-      description: Возвращает сведения о воркфлоу, принадлежащем авторизованному пользователю.
+      description: Возвращает сведения о воркфлоу, принадлежащем владельцу из `userId`.
       responses:
         '200':
           description: Сведения о воркфлоу.
@@ -90,12 +106,17 @@ paths:
               example:
                 workflowId: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
                 serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+        '400':
+          description: Некорректные параметры запроса.
+        '404':
+          description: Воркфлоу, блок или сервис недоступен владельцу.
+
     put:
       tags:
         - workflow
       operationId: updateWorkflow
       summary: Изменить привязку воркфлоу к сервису
-      description: Меняет сервис, к которому привязан воркфлоу авторизованного пользователя.
+      description: Меняет сервис, к которому привязан воркфлоу владельца из `userId`.
       requestBody:
         required: true
         content:
@@ -114,9 +135,14 @@ paths:
               example:
                 workflowId: 22ae8d71-d0cd-4ef1-809d-ee14a170b011
                 serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
+        '400':
+          description: Некорректные параметры запроса.
+        '404':
+          description: Воркфлоу, блок или сервис недоступен владельцу.
 
   /v1/workflow/{workflowId}/bulk/block:
     parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
       - $ref: '#/components/parameters/WorkflowId'
     post:
       tags:
@@ -127,9 +153,10 @@ paths:
         Передайте блоки целиком. У каждого блока в батче должен быть свой `id`.
         Блок с новым `id` добавляется, а блок с существующим `id` целиком заменяет сохранённый.
 
-        Валидатор разбирает JSON-строку `metadata` каждого блока и проверяет полученный объект
-        по схеме его типа из каталога (`GET /v1/workflow/block/metadata`).
-        Каждый переход в `next`, `onError`, `default` или `cases[*].next` должен вести к блоку этого воркфлоу.
+        Валидатор находит `type` в каталоге (`GET /v1/workflow/block/metadata`), разбирает JSON-строку
+        `metadata` и проверяет полученный объект по схеме этого типа.
+        Каждый переход в `next`, `onError`, `default`, `cases[*].next`, `onSucceeded` или `onCanceled`
+        должен вести к блоку этого воркфлоу.
         Цель может быть уже сохранена или находиться в любом месте того же батча.
 
         Если все блоки прошли проверку, валидатор сохраняет их вместе. При ошибке отклоняет весь батч.
@@ -152,9 +179,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationErrorDto'
+        '400':
+          description: Некорректные параметры запроса.
+        '404':
+          description: Воркфлоу, блок или сервис недоступен владельцу.
 
   /v1/workflow/{workflowId}/block:
     parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
       - $ref: '#/components/parameters/WorkflowId'
     get:
       tags:
@@ -177,6 +209,9 @@ paths:
                   {"saveAs": "text", "priority": 10, "resetAfterReceive": true, "next": "voice.check_length"}
         '404':
           description: Блок не найден среди доступных блоков указанного воркфлоу.
+        '400':
+          description: Некорректные параметры запроса.
+
     put:
       tags:
         - block
@@ -184,8 +219,8 @@ paths:
       summary: Заменить блок воркфлоу
       description: >-
         Блок выбирается по параметру запроса `blockId`. Передайте новые значения обоих полей — `type` и `metadata`.
-        Валидатор разбирает JSON-строку `metadata`, проверяет параметры по схеме типа блока
-        и проверяет переходы к сохранённым блокам этого воркфлоу.
+        Валидатор находит `type` в каталоге, разбирает JSON-строку `metadata`, проверяет параметры
+        по схеме этого типа и проверяет переходы к сохранённым блокам этого воркфлоу.
       parameters:
         - $ref: '#/components/parameters/WorkflowBlockId'
       requestBody:
@@ -218,6 +253,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationErrorDto'
+        '400':
+          description: Некорректные параметры запроса.
+
     delete:
       tags:
         - block
@@ -237,9 +275,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ValidationErrorDto'
+        '400':
+          description: Некорректные параметры запроса.
 
   /v1/workflow/{workflowId}/block/list:
     parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
       - $ref: '#/components/parameters/WorkflowId'
     get:
       tags:
@@ -254,13 +295,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkflowBlockListDto'
               example:
+                serviceId: a403a6ac-f1bb-47d3-91cc-b10fec62a9f0
                 blocks:
                   - id: voice.start
                     type: command
                     metadata: |-
                       {"command": "/voice", "scope": "entry", "next": "voice.prompt"}
+        '400':
+          description: Некорректные параметры запроса.
+        '404':
+          description: Воркфлоу, блок или сервис недоступен владельцу.
 
   /v1/workflow/block/metadata:
+    parameters:
+      - $ref: './common.yaml#/components/parameters/TemporaryUserId'
     get:
       tags:
         - block
@@ -279,6 +327,8 @@ paths:
               examples:
                 supported-types:
                   $ref: ./workflow-blocks.schema.yaml#/components/examples/workflow-block-catalog-example
+        '400':
+          description: Некорректное или повторно указанное значение userId.
 
 components:
   parameters:
@@ -345,8 +395,13 @@ components:
     WorkflowBlockListDto:
       type: object
       required:
+        - serviceId
         - blocks
       properties:
+        serviceId:
+          type: string
+          format: uuid
+          description: Сервис, к которому относится этот снимок графа.
         blocks:
           type: array
           description: Полные объекты сохранённых блоков. Пустой массив соответствует воркфлоу без блоков.
@@ -366,13 +421,13 @@ components:
 
     WorkflowListDto:
       type: object
-      description: Воркфлоу авторизованного пользователя.
+      description: Воркфлоу владельца из `userId`.
       required:
         - workflows
       properties:
         workflows:
           type: array
-          description: Воркфлоу авторизованного пользователя. Если у него ещё нет воркфлоу, массив пуст.
+          description: Воркфлоу владельца из `userId`. Если у него ещё нет воркфлоу, массив пуст.
           items:
             $ref: '#/components/schemas/WorkflowDto'
 
