@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: system1
+      POSTGRES_USER: system1
+      POSTGRES_PASSWORD: system1
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U system1 -d system1
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres:
