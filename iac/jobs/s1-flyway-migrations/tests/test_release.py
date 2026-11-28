@@ -82,6 +82,8 @@ esac
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(' logs job.batch/s1-flyway-migrations-abcde', calls)
         self.assertIn(' delete job.batch/s1-flyway-migrations-abcde', calls)
+        self.assertIn('--cascade=foreground', calls)
+        self.assertIn('--wait=true', calls)
 
 
 class ReleaseWorkflow(unittest.TestCase):
@@ -103,6 +105,28 @@ class ReleaseWorkflow(unittest.TestCase):
         self.assertNotIn('sync-iac', workflow['jobs'])
         reusable = load(ROOT / '.github/workflows/_build-module.yml')
         self.assertNotIn('deploy_to_stand', str(reusable))
+
+    def test_live_tags_are_not_published_before_migration(self):
+        workflow = load(ROOT / '.github/workflows/entrypoint.yml')
+        steps = [step['name'] for step in workflow['jobs']['release']['steps']]
+        self.assertLess(steps.index('Verify release is current'), steps.index('Apply database migrations'))
+        self.assertLess(steps.index('Apply database migrations'), steps.index('Promote service images'))
+        self.assertLess(steps.index('Promote service images'), steps.index('Sync ArgoCD'))
+        action = (ROOT / '.github/workflows/actions/build_image/action.yml').read_text()
+        self.assertIn(':sha-${{ github.sha }}', action)
+        self.assertNotIn('type=ref,event=branch', action)
+        self.assertNotIn('type=raw,value=prod', action)
+
+    def test_applicationset_does_not_prune_workloads_on_new_git_revision(self):
+        spec = load(ROOT / 'iac/system1.yaml')['spec']
+        self.assertEqual(spec['syncPolicy']['applicationsSync'], 'create-update')
+        self.assertEqual(spec['syncPolicy']['preserveResourcesOnDeletion'], 'true')
+        self.assertNotIn('finalizers', spec['template']['metadata'])
+
+    def test_waits_for_actual_deployment_rollout(self):
+        workflow = load(ROOT / '.github/workflows/entrypoint.yml')
+        steps = {step['name']: step for step in workflow['jobs']['release']['steps']}
+        self.assertIn('rollout status', steps['Restart updated Deployments']['run'])
 
 
 if __name__ == '__main__':

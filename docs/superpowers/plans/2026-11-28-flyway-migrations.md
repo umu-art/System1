@@ -33,3 +33,9 @@ First run with missing credentials; failed Job vs timeout; repeat migrations; la
 Ruling: build every target-environment service on push — queued runs may be replaced by newer pushes, so a last-push diff can miss unpublished changes — more build time in exchange for a complete release.
 
 Local Docker/PostgreSQL smoke execution requires Docker; the check is wired into CI before publication.
+
+Ruling: promote service digests to runtime tags only after Flyway — existing pods always pull by tag, independent of explicit rollout — adds a registry promotion step while keeping the existing ArgoCD image convention.
+
+Ruling: require the current branch tip or latest version tag and disable Flyway's future-migration ignore — serial execution alone does not prevent a stale retry — release operators must retry the current ref, not deploy older tags.
+
+Ruling: prevent ApplicationSet garbage collection from cascading outside the release pipeline — removing an app directory could otherwise delete workloads during a failed migration — retire applications explicitly and apply controller policy during bootstrap.

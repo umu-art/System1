@@ -15,10 +15,6 @@ on:
         description: "Среда (python, go, node)"
         type: string
         required: true
-      env:
-        description: "Окружение из iac/envs (stage, prod)"
-        type: string
-        required: true
       test-only:
         description: "Только тесты, без сборки образа и деплоя (true на PR)"
         type: string
@@ -60,6 +56,7 @@ jobs:
           test-only: ${{ inputs.test-only }}
 
       - name: Build Docker image
+        id: image
         if: inputs.test-only != 'true'
         uses: ./.github/workflows/actions/build_image
         with:
@@ -67,17 +64,19 @@ jobs:
           actor: umu-art
           token: ${{ secrets.PACKAGES_TOKEN }}
 
-      - name: Record Deployment for release
-        if: inputs.test-only != 'true' && !inputs.skip-rollout
+      - name: Record service image for release
+        if: inputs.test-only != 'true'
         env:
-          DEPLOYMENT: ${{ inputs.name }}
-        run: touch "$RUNNER_TEMP/$DEPLOYMENT"
+          SERVICE: ${{ inputs.name }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+          SKIP_ROLLOUT: ${{ inputs.skip-rollout }}
+        run: printf '%s\n%s\n' "$DIGEST" "$SKIP_ROLLOUT" > "$RUNNER_TEMP/$SERVICE"
 
-      - name: Upload Deployment marker
-        if: inputs.test-only != 'true' && !inputs.skip-rollout
+      - name: Upload service image metadata
+        if: inputs.test-only != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: rollout-${{ inputs.name }}
+          name: service-image-${{ inputs.name }}
           path: ${{ runner.temp }}/${{ inputs.name }}
           if-no-files-found: error
           overwrite: true

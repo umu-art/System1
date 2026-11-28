@@ -15,20 +15,23 @@ here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 kube=(kubectl --namespace "$namespace")
 
 sed "s/__NAMESPACE__/$namespace/g" "$here/external-secrets.yaml" |
-  "${kube[@]}" apply -f -
+  "${kube[@]}" apply -f - --request-timeout=30s
 for secret in s1-flyway-migrations github-container-registry; do
-  "${kube[@]}" wait --for=condition=Ready "externalsecret/$secret" --timeout=120s
+  "${kube[@]}" wait --for=condition=Ready "externalsecret/$secret" --timeout=120s --request-timeout=135s
 done
 
 job=$(sed -e "s|__IMAGE__|$image|g" -e "s|__RUN_KEY__|$run_key|g" "$here/job.yaml" |
-  "${kube[@]}" create -f - -o name)
+  "${kube[@]}" create -f - -o name --request-timeout=30s)
 
 fail_job() {
   echo "$job: $1" >&2
   "${kube[@]}" describe "$job" --request-timeout=15s >&2 || true
   "${kube[@]}" logs "$job" --request-timeout=15s >&2 || true
   if [[ ${2:-} == cancel ]]; then
-    "${kube[@]}" delete "$job" --request-timeout=30s --wait=false --ignore-not-found >&2 || true
+    if ! "${kube[@]}" delete "$job" --request-timeout=30s --timeout=30s \
+      --cascade=foreground --wait=true --ignore-not-found >&2; then
+      echo "$job: could not confirm cancellation; check the Job before retrying" >&2
+    fi
   fi
   exit 1
 }
